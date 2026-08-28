@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Choose Your Courses{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Choose Your Courses</h1>
+    <p class="sub">{{ profile.programme.name if profile.programme else 'No programme assigned' }} · Year {{ profile.year_of_study }}</p>
+  </div>
+  <div class="head-actions">
+    <a href="{{ url_for('student.dashboard') }}" class="btn">← Back to Dashboard</a>
+  </div>
+</div>
+
+<!-- Show enrolled count -->
+<div class="card" style="margin-bottom:20px; border-color:var(--accent-2); background:var(--accent-2-soft);">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <div>
+      <span style="font-weight:600;">📚 Your Enrollments</span>
+      <span style="margin-left:12px; color:var(--ink-soft);">
+        {{ enrolled_ids|length }} course(s) enrolled
+      </span>
+    </div>
+    <span style="font-size:13px; color:var(--ink-soft);">
+      Select courses below and click "Add Selected Courses"
+    </span>
+  </div>
+</div>
+
+<form method="POST">
+  <!-- ✅ RECOMMENDED COURSES SECTION -->
+  <h2 style="font-size:18px; margin-bottom:14px; display:flex; align-items:center; gap:10px;">
+    <span>🎯 Recommended Courses</span>
+    <span style="font-size:12px; color:var(--ink-soft); font-weight:400;">From your programme</span>
+  </h2>
+  {% if recommended_courses %}
+  <div class="card" style="margin-bottom:24px;">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      {% for course in recommended_courses %}
+      <label style="display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--line); border-radius:8px; cursor:pointer; transition:all .2s ease;{% if course.id in enrolled_ids %} background:var(--present-soft); border-color:var(--present);{% endif %}">
+        <input type="checkbox" name="course_ids" value="{{ course.id }}" {% if course.id in enrolled_ids %}checked disabled{% endif %}>
+        <div>
+          <strong>{{ course.code }}</strong>
+          <span style="display:block; font-size:13px; color:var(--ink-soft);">{{ course.name }}</span>
+          <span style="font-size:11px; color:var(--ink-soft);">Year {{ course.year_of_study }} · Sem {{ course.semester }}</span>
+        </div>
+        {% if course.id in enrolled_ids %}
+          <span class="badge badge-present" style="margin-left:auto;">✅ Enrolled</span>
+        {% endif %}
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="margin-bottom:24px; border-color:var(--late); background:var(--late-soft);">
+    <p style="color:var(--late);">⚠️ No recommended courses found for your programme. Please contact admin.</p>
+  </div>
+  {% endif %}
+
+  <!-- ✅ ALL OTHER COURSES SECTION -->
+  <h2 style="font-size:18px; margin-bottom:14px; display:flex; align-items:center; gap:10px; margin-top:32px;">
+    <span>📖 All Other Courses</span>
+    <span style="font-size:12px; color:var(--ink-soft); font-weight:400;">From all programmes</span>
+  </h2>
+  {% if other_courses %}
+  <div class="card" style="margin-bottom:24px;">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      {% for course in other_courses %}
+      <label style="display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--line); border-radius:8px; cursor:pointer; transition:all .2s ease;{% if course.id in enrolled_ids %} background:var(--present-soft); border-color:var(--present);{% endif %}">
+        <input type="checkbox" name="course_ids" value="{{ course.id }}" {% if course.id in enrolled_ids %}checked disabled{% endif %}>
+        <div>
+          <strong>{{ course.code }}</strong>
+          <span style="display:block; font-size:13px; color:var(--ink-soft);">{{ course.name }}</span>
+          <span style="font-size:11px; color:var(--ink-soft);">
+            {{ course.programme.code if course.programme else 'No programme' }} · Year {{ course.year_of_study }} · Sem {{ course.semester }}
+          </span>
+        </div>
+        {% if course.id in enrolled_ids %}
+          <span class="badge badge-present" style="margin-left:auto;">✅ Enrolled</span>
+        {% endif %}
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="margin-bottom:24px; border-color:var(--line); background:var(--paper-raised);">
+    <p style="color:var(--ink-soft);">No other courses available in the database.</p>
+  </div>
+  {% endif %}
+
+  <!-- Submit Button -->
+  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+    <button type="submit" class="btn btn-primary" {% if not recommended_courses and not other_courses %}disabled{% endif %}>
+      📥 Add Selected Courses
+    </button>
+    <a href="{{ url_for('student.dashboard') }}" class="btn">Cancel</a>
+  </div>
+  
+  {% if recommended_courses and recommended_courses|length == enrolled_ids|length %}
+    <p style="margin-top:12px; color:var(--present); font-weight:500;">✅ You are already enrolled in all recommended courses!</p>
+  {% endif %}
+</form>
+
+<!-- Debug info (only visible to admin) -->
+{% if current_user.role == 'admin' %}
+<div class="card" style="margin-top:24px; border-color:var(--accent-2); background:var(--accent-2-soft);">
+  <h4 style="font-size:14px; color:var(--accent);">🔧 Admin Debug Info</h4>
+  <p style="font-size:13px; margin-top:8px;">
+    <strong>Student:</strong> {{ current_user.full_name }}<br>
+    <strong>Programme:</strong> {{ profile.programme.name if profile.programme else 'None' }}<br>
+    <strong>Programme ID:</strong> {{ profile.programme_id or 'None' }}<br>
+    <strong>Recommended Courses:</strong> {{ recommended_courses|length }}<br>
+    <strong>Other Courses:</strong> {{ other_courses|length }}<br>
+    <strong>Enrolled:</strong> {{ enrolled_ids|length }}
+  </p>
+  <p style="font-size:12px; color:var(--ink-soft); margin-top:8px;">
+    💡 To add more courses, go to <a href="{{ url_for('admin.structure') }}" style="color:var(--accent);">Academic Structure</a>.
+  </p>
+</div>
+{% endif %}
+{% endblock %}

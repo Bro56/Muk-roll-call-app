@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Hey, {{ current_user.full_name.split(' ')[0] }} 👋</h1>
+    <p class="sub">{{ profile.programme.name if profile.programme else 'No programme set' }} · Year {{ profile.year_of_study }}</p>
+  </div>
+  <div class="head-actions">
+    {% if current_user.classrep and current_user.classrep.approved %}
+      <a href="{{ url_for('class_rep.dashboard') }}" class="btn btn-gold" style="border-color:var(--accent-2);">
+        👑 Class Rep Dashboard
+      </a>
+    {% endif %}
+    <a href="{{ url_for('student.choose_courses') }}" class="btn btn-primary">+ Add courses</a>
+    <a href="{{ url_for('class_rep.register_request') }}" class="btn btn-gold">Apply as Class Rep</a>
+  </div>
+</div>
+
+<div class="grid grid-3" style="margin-bottom:28px;">
+  <div class="card stat-card fade-in">
+    <span class="label">Overall attendance</span>
+    <span class="value" style="color: {{ 'var(--present)' if overall_pct >= threshold else 'var(--absent)' }};">{{ "%.0f"|format(overall_pct) }}%</span>
+    <div class="progress-bar"><div class="fill" style="width:{{ overall_pct }}%; background:{{ 'var(--present)' if overall_pct >= threshold else 'var(--absent)' }};"></div></div>
+  </div>
+  <div class="card stat-card fade-in">
+    <span class="label">Courses enrolled</span>
+    <span class="value">{{ course_rows|length }}</span>
+  </div>
+  <div class="card stat-card fade-in">
+    <span class="label">Eligibility threshold</span>
+    <span class="value">{{ threshold|int }}%</span>
+  </div>
+</div>
+
+{% if notifications %}
+<div class="card" style="margin-bottom:24px; border-color:var(--accent-2); background:var(--accent-2-soft);">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <h3 style="font-size:16px; display:flex; align-items:center; gap:8px;">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 01-3.46 0"/>
+      </svg>
+      Notifications
+    </h3>
+    <form method="POST" action="{{ url_for('student.mark_notifications_read') }}" style="margin:0;">
+      <button type="submit" class="btn btn-sm" style="font-size:12px;">Mark all as read</button>
+    </form>
+  </div>
+  {% for notif in notifications %}
+    <div style="padding:10px 12px; margin-bottom:8px; background:var(--paper-raised); border-radius:8px; border-left:3px solid {{ 'var(--present)' if notif.read else 'var(--accent-2)' }};">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+        <div>
+          <p style="font-size:14px; margin:0;">{{ notif.message }}</p>
+          {% if notif.link %}
+            <a href="{{ notif.link }}" style="font-size:12px; color:var(--accent); font-weight:600; margin-top:4px; display:inline-block;">View →</a>
+          {% endif %}
+        </div>
+        <span style="font-size:11px; color:var(--ink-soft); white-space:nowrap;">
+          {{ notif.created_at.strftime('%d %b %Y, %H:%M') }}
+        </span>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if profile.face_encoding is none %}
+<div class="card" style="border-color:var(--late); background:var(--late-soft); margin-bottom:24px;">
+  <strong>No face on file.</strong> Biometric roll call won't recognize you until you enroll a face photo. Contact your admin to re-enroll.
+</div>
+{% endif %}
+
+<h2 style="font-size:18px; margin-bottom:14px; position:sticky; top:0; background:var(--paper-raised); z-index:10; padding:12px 0; border-bottom:1px solid var(--line);">Your courses</h2>
+<p style="font-size:12px; color:var(--ink-soft); margin-bottom:12px;">You are enrolled in {{ course_rows|length }} course(s).</p>
+
+{% if course_rows %}
+<div class="grid grid-2 stagger" id="courseGrid">
+  {% for row in course_rows %}
+  <a href="{{ url_for('student.course_detail', course_id=row.course.id) }}" 
+     class="card hoverable {% if row.has_active_session %}ongoing-session{% endif %}"
+     data-course-id="{{ row.course.id }}"
+     id="course-card-{{ row.course.id }}">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+      <div>
+        <div class="eyebrow">{{ row.course.code }}</div>
+        <h3 style="font-size:16.5px; margin-top:4px;">{{ row.course.name }}</h3>
+        <div class="live-badge-container" style="margin-top:6px; {% if not row.has_active_session %}display:none;{% endif %}">
+          <span class="badge badge-present" style="animation:pulse 1.6s ease-in-out infinite;">🔴 Live Session Ongoing</span>
+          <span style="font-size:12px; color:var(--present); margin-left:8px;">Click to take attendance</span>
+        </div>
+      </div>
+      {% if row.at_risk %}<span class="badge badge-absent">At risk</span>{% endif %}
+    </div>
+    <div style="margin-top:16px;">
+      <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--ink-soft); margin-bottom:6px;">
+        <span>{{ row.present }} / {{ row.total }} sessions</span>
+        <span style="font-weight:700; color:{{ 'var(--present)' if row.percentage >= threshold else 'var(--absent)' }};">{{ "%.0f"|format(row.percentage) }}%</span>
+      </div>
+      <div class="progress-bar"><div class="fill" style="width:{{ row.percentage }}%; background:{{ 'var(--present)' if row.percentage >= threshold else 'var(--absent)' }};"></div></div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty-state">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+  <p>You haven't added any courses yet.</p>
+  <a href="{{ url_for('student.choose_courses') }}" class="btn btn-primary" style="margin-top:14px;">Add your courses</a>
+</div>
+{% endif %}
+
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+(function () {
+  const socket = io();
+  {% for row in course_rows %}
+  socket.emit('join_course', { course_id: {{ row.course.id }} });
+  {% endfor %}
+  
+  socket.on('session_started', function(data) {
+    const card = document.getElementById('course-card-' + data.course_id);
+    if (!card) return;
+    card.classList.add('ongoing-session');
+    const badgeContainer = card.querySelector('.live-badge-container');
+    if (badgeContainer) badgeContainer.style.display = 'block';
+  });
+  
+  socket.on('session_ended', function(data) {
+    const card = document.getElementById('course-card-' + data.course_id);
+    if (!card) return;
+    card.classList.remove('ongoing-session');
+    const badgeContainer = card.querySelector('.live-badge-container');
+    if (badgeContainer) badgeContainer.style.display = 'none';
+  });
+})();
+</script>
+{% endblock %}

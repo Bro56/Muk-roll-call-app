@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block title %}{{ course.code }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="eyebrow">{{ course.code }} · {{ course.programme.name }}</div>
+    <h1>{{ course.name }}</h1>
+  </div>
+  <div class="head-actions">
+    <a href="{{ url_for('lecturer.export_report', course_id=course.id, fmt='csv') }}" class="btn btn-sm">Export CSV</a>
+    <a href="{{ url_for('lecturer.export_report', course_id=course.id, fmt='pdf') }}" class="btn btn-sm">Export PDF</a>
+  </div>
+</div>
+
+{% if live_session %}
+<div class="card" style="margin-bottom:24px; border-color:var(--present); background:var(--present-soft);">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+    <div>
+      <span class="eyebrow">Active session</span>
+      <h2 style="font-size:18px; margin-top:4px; color:var(--present);">🟢 GPS check-in is live</h2>
+      <p style="color:var(--ink-soft); font-size:13px; margin-top:4px;">
+        Started by <strong>{{ live_session.started_by_name }} ({{ live_session.started_by_label }})</strong> at {{ live_session.started_at.strftime('%d %b %Y, %H:%M') }} ·
+        {{ live_session.radius_metres|int }}m radius
+      </p>
+    </div>
+    <form method="POST" action="{{ url_for('lecturer.end_session', session_id=live_session.id) }}">
+      <button type="submit" class="btn btn-danger" onclick="return confirm('End this session? Students will no longer be able to check in.')">
+        ⏹ End Session
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Needs attention -->
+<div class="card" id="attention-card" style="margin-bottom:24px; display:none;">
+  <div class="eyebrow" style="margin-bottom:10px;">Students who need help checking in</div>
+  <div id="attention-list"></div>
+</div>
+{% else %}
+<div class="page-head" style="margin-bottom:14px;">
+  <h2 style="font-size:18px;">Lecture sessions</h2>
+  <div class="head-actions">
+    <button class="btn btn-sm" onclick="document.getElementById('createSessionForm').classList.toggle('hidden')">+ New session</button>
+  </div>
+</div>
+
+<form id="createSessionForm" method="POST" action="{{ url_for('lecturer.create_course_session', course_id=course.id) }}" class="card hidden" style="margin-bottom:20px;">
+  <div class="field">
+    <label>Session topic (optional)</label>
+    <input type="text" name="topic" placeholder="e.g. Week 5 — Recursion">
+  </div>
+  <button type="submit" class="btn btn-primary btn-sm">Create session</button>
+</form>
+
+{% if course_sessions %}
+<div class="grid grid-2 stagger" style="margin-bottom:32px;">
+  {% for cs in course_sessions[:4] %}
+  <div class="card">
+    <div class="eyebrow">{{ cs.date.strftime('%d %b %Y') }}</div>
+    <h3 style="font-size:15.5px; margin:4px 0 10px;">{{ cs.topic or (course.code + ' Session') }}</h3>
+    <form method="POST" action="{{ url_for('lecturer.start_session', session_id=cs.id) }}" class="start-session-form">
+      <input type="hidden" name="latitude" class="lat-input">
+      <input type="hidden" name="longitude" class="lon-input">
+      <input type="hidden" name="accuracy" class="acc-input">
+      <button type="submit" class="btn btn-sm btn-primary start-session-btn">
+        🟢 Start ({{ radius_metres|int }}m radius)
+      </button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty-state" style="margin-bottom:32px;">
+  <p>No lecture sessions yet. Create one above, or wait for a class rep to create one.</p>
+</div>
+{% endif %}
+{% endif %}
+
+<div class="grid grid-3" style="margin-bottom:28px;">
+  <div class="card stat-card"><span class="label">Enrolled students</span><span class="value">{{ roster|length }}</span></div>
+  <div class="card stat-card"><span class="label">Sessions held</span><span class="value">{{ course_sessions|selectattr('closed_at')|list|length }}</span></div>
+  <div class="card stat-card"><span class="label">At-risk students</span>
+    <span class="value" style="color:var(--absent);">{{ roster|selectattr('percentage', 'lt', threshold)|list|length }}</span>
+  </div>
+</div>
+
+<h2 style="font-size:18px; margin-bottom:14px;">Roster &amp; attendance</h2>
+{% if roster %}
+<div class="card" style="padding:0; overflow:hidden; margin-bottom:32px;">
+  <table class="roster">
+    <thead><tr><th>Student</th><th>Student No.</th><th>Present</th><th>Attendance %</th><th></th></tr></thead>
+    <tbody>
+      {% for r in roster %}
+      <tr>
+        <td class="person-cell">
+          <div class="avatar">{{ r.name.split(' ')|map('first')|join('')|upper }}</div>
+          {{ r.name }}
+        </td>
+        <td style="font-family:var(--font-mono); font-size:13px;">{{ r.student_number or '—' }}</td>
+        <td>{{ r.present }} / {{ r.total }}</td>
+        <td>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <svg width="60" height="20" viewBox="0 0 60 20" style="flex-shrink:0;">
+              {% set pts = [] %}
+              {% for h in r.history %}
+                {% set x = (loop.index0 / (r.history|length - 1) * 50 + 5) if r.history|length > 1 else 30 %}
+                {% set y = 18 - (h * 14) %}
+                {% set _ = pts.append(x|string + ',' + y|string) %}
+                <circle cx="{{ x|int }}" cy="{{ y|int }}" r="2.5" fill="{{ 'var(--present)' if h else 'var(--absent)' }}" opacity="0.9"/>
+              {% endfor %}
+              {% if pts|length > 1 %}
+                <polyline points="{{ pts|join(' ') }}" fill="none" stroke="var(--ink-soft)" stroke-width="1.5" opacity="0.4"/>
+              {% endif %}
+            </svg>
+            <div class="progress-bar" style="width:60px;"><div class="fill" style="width:{{ r.percentage }}%; background:{{ 'var(--present)' if r.percentage >= threshold else 'var(--absent)' }};"></div></div>
+            <span style="font-weight:700; font-size:13px; color:{{ 'var(--present)' if r.percentage >= threshold else 'var(--absent)' }};">{{ "%.0f"|format(r.percentage) }}%</span>
+          </div>
+        </td>
+        <td>
+          {% if r.percentage < threshold and r.total > 0 %}
+            <span class="badge badge-absent">At risk</span>
+          {% else %}
+            {% set trend = r.history|at_risk_trend(threshold) %}
+            {% if trend.trending %}
+              <span class="badge badge-late" title="Projected final attendance: {{ '%.0f'|format(trend.projected) }}%">Trending at risk ↘</span>
+            {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card empty-state" style="margin-bottom:32px;">
+  <p>No students have enrolled in this course yet.</p>
+</div>
+{% endif %}
+
+<h2 style="font-size:18px; margin-bottom:14px;">Session history</h2>
+{% if course_sessions %}
+<div class="card" style="padding:0; overflow:hidden;">
+  <table class="roster">
+    <thead><tr><th>Date</th><th>Topic</th><th>Status</th><th>Marked</th></tr></thead>
+    <tbody>
+      {% for s in course_sessions %}
+      <tr>
+        <td>{{ s.date.strftime('%d %b %Y') }}</td>
+        <td>{{ s.topic or '—' }}</td>
+        <td>{% if s.is_open %}<span class="badge badge-late">Open</span>{% else %}<span class="badge badge-present">Closed</span>{% endif %}</td>
+        <td>{{ s.records|length }} students</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- Rectify QR modal -->
+<div id="rectifyModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:var(--paper-raised); border-radius:var(--radius-lg); padding:30px; max-width:360px; width:90%; text-align:center;">
+    <h3 style="font-size:17px; margin-bottom:6px;" id="rectifyStudentName">—</h3>
+    <p style="font-size:13px; color:var(--ink-soft); margin-bottom:16px;">Ask the student to scan this with their own phone, right now.</p>
+    <img id="rectifyQrImg" src="" alt="QR code" style="width:220px; height:220px; margin:0 auto 14px; display:block; border-radius:12px;">
+    <div style="font-weight:800; font-size:22px; margin-bottom:4px;" id="rectifyCountdown">60s</div>
+    <div style="font-size:12px; color:var(--ink-soft); margin-bottom:16px;">This code expires automatically</div>
+    <button class="btn" onclick="closeRectifyModal()">Close</button>
+  </div>
+</div>
+
+<style>
+  .swipe-row { position: relative; overflow: hidden; }
+  .swipe-row td { transition: transform 0.2s ease; }
+  .swipe-row.open td { transform: translateX(-100px); }
+  .swipe-actions {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--absent);
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    z-index: 5;
+  }
+  .swipe-row.open .swipe-actions { transform: translateX(0); }
+</style>
+
+<script>
+  const REP_ACCURACY_WARN = {{ rep_accuracy_warn|default(35) }};
+
+  document.querySelectorAll('.start-session-form').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const btn = form.querySelector('.start-session-btn');
+
+      if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Getting location…';
+
+      navigator.geolocation.getCurrentPosition(
+        function (position) {
+          const accuracy = position.coords.accuracy;
+          form.querySelector('.lat-input').value = position.coords.latitude;
+          form.querySelector('.lon-input').value = position.coords.longitude;
+          form.querySelector('.acc-input').value = accuracy;
+
+          if (accuracy && accuracy > REP_ACCURACY_WARN) {
+            const proceed = confirm(
+              'Your location signal is a bit weak right now. For best results, ' +
+              'wait a few seconds or move near a window, then try again.\n\n' +
+              'Click OK to start anyway, or Cancel to retry getting your location.'
+            );
+            if (!proceed) {
+              btn.disabled = false;
+              btn.textContent = '🟢 Start ({{ radius_metres|int }}m radius)';
+              return;
+            }
+          }
+          form.submit();
+        },
+        function () {
+          alert('Unable to retrieve your location. Please allow location access and try again.');
+          btn.disabled = false;
+          btn.textContent = '🟢 Start ({{ radius_metres|int }}m radius)';
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+  });
+
+  {% if live_session %}
+  const ATTENTION_URL = "{{ url_for('class_rep.needs_attention_api', course_id=course.id) }}";
+  const REASON_LABELS = {
+    gps_missing: 'Location unavailable',
+    gps_out_of_range: 'Out of range',
+    face_missing: 'Camera unavailable',
+    face_no_match: "Face didn't match",
+    face_error: 'Face capture issue',
+    no_face_enrolled: 'No face enrolled',
+  };
+
+  function renderAttention(students) {
+    const card = document.getElementById('attention-card');
+    const list = document.getElementById('attention-list');
+    if (!students.length) {
+      card.style.display = 'none';
+      return;
+    }
+    card.style.display = 'block';
+    list.innerHTML = students.map(function (s) {
+      const reason = REASON_LABELS[s.last_reason] || 'Trouble checking in';
+      return '<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">' +
+        '<div><strong>' + s.name + '</strong>' +
+        '<div style="font-size:12px; color:var(--ink-soft);">' + reason + ' · ' + s.failed_attempts + ' failed attempt' + (s.failed_attempts !== 1 ? 's' : '') + '</div></div>' +
+        '<button class="btn btn-sm btn-primary" onclick="rectify(' + s.lecture_session_id + ',' + s.student_id + ',\'' + s.name.replace(/'/g, "") + '\')">Rectify</button>' +
+        '</div>';
+    }).join('');
+  }
+
+  function pollAttention() {
+    fetch(ATTENTION_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => renderAttention(data.students))
+      .catch(() => {});
+  }
+  pollAttention();
+  setInterval(pollAttention, 5000);
+  {% endif %}
+
+  let rectifyTimer = null;
+
+  function rectify(lectureSessionId, studentId, name) {
+    fetch(`/class-rep/rectify/${lectureSessionId}/${studentId}/generate`, { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { alert(data.error); return; }
+        document.getElementById('rectifyStudentName').textContent = data.student_name;
+        document.getElementById('rectifyQrImg').src = data.qr_data_url;
+        document.getElementById('rectifyModal').style.display = 'flex';
+        startCountdown(data.expires_in_seconds);
+      })
+      .catch(() => alert('Could not generate a code. Please try again.'));
+  }
+
+  function startCountdown(seconds) {
+    clearInterval(rectifyTimer);
+    let remaining = seconds;
+    const el = document.getElementById('rectifyCountdown');
+    el.textContent = remaining + 's';
+    rectifyTimer = setInterval(function () {
+      remaining -= 1;
+      if (remaining <= 0) {
+        clearInterval(rectifyTimer);
+        el.textContent = 'Expired';
+        return;
+      }
+      el.textContent = remaining + 's';
+    }, 1000);
+  }
+
+  function closeRectifyModal() {
+    document.getElementById('rectifyModal').style.display = 'none';
+    clearInterval(rectifyTimer);
+  }
+</script>
+
+<script>
+document.querySelectorAll('table.roster tbody tr').forEach(function(row) {
+  let startX = 0;
+  let currentX = 0;
+  let open = false;
+  
+  row.classList.add('swipe-row');
+  const content = row.innerHTML;
+  row.innerHTML = '<div class="swipe-content" style="display:contents;">' + content + '</div>';
+  
+  const actions = document.createElement('div');
+  actions.className = 'swipe-actions';
+  actions.innerHTML = '<button class="btn btn-sm btn-danger" style="border-radius:0; height:100%;" onclick="markRowStatus(this, \'absent\')">Absent</button>';
+  row.appendChild(actions);
+  
+  row.addEventListener('touchstart', function(e) {
+    startX = e.touches[0].clientX;
+  }, {passive: true});
+  
+  row.addEventListener('touchmove', function(e) {
+    currentX = e.touches[0].clientX;
+    const diff = startX - currentX;
+    if (diff > 40 && diff < 150) {
+      row.classList.add('open');
+      open = true;
+    } else if (diff < -20) {
+      row.classList.remove('open');
+      open = false;
+    }
+  }, {passive: true});
+  
+  row.addEventListener('touchend', function() {
+    if (Math.abs(startX - currentX) < 30) {
+      row.classList.remove('open');
+      open = false;
+    }
+  });
+});
+
+function markRowStatus(btn, status) {
+  if (navigator.vibrate) navigator.vibrate([50]);
+  const row = btn.closest('tr');
+  row.style.opacity = '0.5';
+  setTimeout(function() {
+    row.classList.remove('open');
+    row.style.opacity = '1';
+  }, 200);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Confirm Attendance{% endblock %}
+{% block content %}
+<div style="max-width:420px; margin:0 auto;">
+  <div class="card" style="text-align:center;">
+    <h1 style="font-size:19px; margin-bottom:6px;">Confirm it's you</h1>
+
+    {% if error %}
+      <p style="color:var(--absent); margin:16px 0;">{{ error }}</p>
+      <a href="{{ url_for('student.dashboard') }}" class="btn btn-primary">Back to dashboard</a>
+    {% else %}
+      <p style="color:var(--ink-soft); font-size:13px; margin-bottom:16px;">
+        Your class rep generated this for you. Look at the camera to confirm your attendance — no GPS needed, this only works because you're right next to them.
+      </p>
+
+      <div style="position:relative; width:100%; aspect-ratio:4/3; background:#000; border-radius:12px; overflow:hidden; margin-bottom:16px;">
+        <video id="rectifyVideo" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover;"></video>
+        <canvas id="rectifyCanvas" style="display:none;"></canvas>
+      </div>
+
+      <div id="rectifyStatus" style="margin-bottom:14px; font-size:14px; color:var(--ink-soft);">
+        <span id="rectifySeconds">{{ seconds_left }}</span>s left · position your face in the frame
+      </div>
+
+      <button onclick="captureRectify()" class="btn btn-primary" id="rectifyBtn" style="width:100%;">📸 Confirm my face</button>
+    {% endif %}
+  </div>
+</div>
+
+{% if not error %}
+<script>
+  let rectifyStream = null;
+  let secondsLeft = {{ seconds_left }};
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+    .then(function (s) {
+      rectifyStream = s;
+      document.getElementById('rectifyVideo').srcObject = s;
+    })
+    .catch(function () {
+      document.getElementById('rectifyStatus').textContent = 'Camera access denied. Please allow camera permissions and reload.';
+    });
+
+  const countdownInterval = setInterval(function () {
+    secondsLeft -= 1;
+    const el = document.getElementById('rectifySeconds');
+    if (el) el.textContent = secondsLeft;
+    if (secondsLeft <= 0) {
+      clearInterval(countdownInterval);
+      document.getElementById('rectifyStatus').textContent = 'This code has expired. Ask your class rep to generate a new one.';
+      document.getElementById('rectifyBtn').disabled = true;
+      if (rectifyStream) rectifyStream.getTracks().forEach(t => t.stop());
+    }
+  }, 1000);
+
+  function captureRectify() {
+    const video = document.getElementById('rectifyVideo');
+    const canvas = document.getElementById('rectifyCanvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+    const btn = document.getElementById('rectifyBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Checking…';
+
+    fetch("{{ url_for('student.rectify_confirm', token=token) }}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'face_image=' + encodeURIComponent(dataUrl)
+    })
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('rectifyStatus').textContent = data.message;
+        if (data.success) {
+          document.getElementById('rectifyStatus').style.color = 'var(--present)';
+          if (rectifyStream) rectifyStream.getTracks().forEach(t => t.stop());
+          btn.style.display = 'none';
+        } else {
+          btn.disabled = false;
+          btn.textContent = '📸 Confirm my face';
+        }
+      })
+      .catch(() => {
+        document.getElementById('rectifyStatus').textContent = 'Something went wrong. Please try again.';
+        btn.disabled = false;
+        btn.textContent = '📸 Confirm my face';
+      });
+  }
+</script>
+{% endif %}
+{% endblock %}

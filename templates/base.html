@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ active_theme|default('light') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="theme-color" content="#800000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RollCall">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+
+    <title>{% block title %}Makerere Roll Call{% endblock %}</title>
+
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='img/icon-192.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/icon-192.png') }}">
+    <link rel="apple-touch-icon" sizes="512x512" href="{{ url_for('static', filename='img/icon-512.png') }}">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+
+    <style>
+    :root {
+        --sidebar-width: 260px;
+        --header-height: 64px;
+        --primary-maroon: #800000;
+        --sidebar-bg: var(--paper, #ffffff);
+        --sidebar-border: var(--line, #e2e8f0);
+        --sidebar-hover: var(--hover-bg, #f1f5f9);
+        --sidebar-active: #800000;
+        --sidebar-active-text: #ffffff;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: var(--bg-body, #f8fafc);
+        color: var(--ink, #1e293b);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .app-wrapper {
+        display: flex;
+        min-height: 100vh;
+        flex-direction: column;
+    }
+
+    .app-header {
+        height: var(--header-height);
+        background: var(--paper, #ffffff);
+        border-bottom: 1px solid var(--sidebar-border);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .header-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 100%;
+        padding: 0 1.25rem;
+        gap: 1rem;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .mobile-nav-toggle {
+        display: none;
+        background: none;
+        border: none;
+        font-size: 1.25rem;
+        cursor: pointer;
+        color: var(--ink, #1e293b);
+    }
+
+    .brand-logo {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--primary-maroon);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .header-search {
+        flex: 1;
+        max-width: 480px;
+    }
+    .global-search-wrap { position: relative; width: 100%; }
+    .global-search-input {
+        width: 100%;
+        padding: 8px 12px 8px 36px;
+        border-radius: 8px;
+        border: 1px solid var(--sidebar-border);
+        background: var(--paper-subtle, #f1f5f9);
+        color: var(--ink, #1e293b);
+        font-size: 13.5px;
+        transition: all .2s;
+        box-sizing: border-box;
+    }
+    .global-search-input:focus {
+        outline: none;
+        background: var(--paper, #ffffff);
+        border-color: var(--primary-maroon);
+        box-shadow: 0 0 0 3px rgba(128, 0, 0, 0.1);
+    }
+    .global-search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--ink-soft, #64748b);
+        pointer-events: none;
+        font-size: 14px;
+    }
+    .global-search-dropdown {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        background: var(--paper, #ffffff);
+        border: 1px solid var(--sidebar-border);
+        border-radius: 10px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        max-height: 400px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    .global-search-dropdown.show { display: block; }
+
+    .app-body {
+        display: flex;
+        flex: 1;
+    }
+
+    .app-sidebar {
+        width: var(--sidebar-width);
+        background: var(--sidebar-bg);
+        border-right: 1px solid var(--sidebar-border);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 1rem 0;
+        flex-shrink: 0;
+    }
+
+    .sidebar-nav-group {
+        padding: 0 0.75rem;
+    }
+
+    .sidebar-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--ink-soft, #64748b);
+        padding: 0.75rem 0.75rem 0.35rem 0.75rem;
+    }
+
+    .nav-link-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.65rem 0.85rem;
+        color: var(--ink, #334155);
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 2px;
+        transition: background 0.15s, color 0.15s;
+    }
+
+    .nav-link-item:hover {
+        background-color: var(--sidebar-hover);
+        color: var(--primary-maroon);
+    }
+
+    .nav-link-item.active {
+        background-color: var(--sidebar-active);
+        color: var(--sidebar-active-text);
+    }
+
+    .nav-link-item .nav-icon {
+        font-size: 1.1rem;
+        width: 20px;
+        text-align: center;
+    }
+
+    .sidebar-footer {
+        padding: 1rem 0.75rem 0 0.75rem;
+        border-top: 1px solid var(--sidebar-border);
+    }
+
+    .user-profile-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem;
+        border-radius: 6px;
+        background: var(--paper-subtle, #f8fafc);
+        margin-bottom: 0.5rem;
+    }
+
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--primary-maroon);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .user-details {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .user-details .name {
+        font-size: 13.5px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .user-details .role-badge {
+        font-size: 11px;
+        color: var(--ink-soft, #64748b);
+        text-transform: capitalize;
+    }
+
+    .main-content {
+        flex: 1;
+        padding: 1.5rem;
+        min-width: 0;
+    }
+
+    .app-footer {
+        padding: 1rem 1.5rem;
+        background: var(--paper, #ffffff);
+        border-top: 1px solid var(--sidebar-border);
+        text-align: center;
+        font-size: 13px;
+        color: var(--ink-soft, #64748b);
+    }
+
+    @media (max-width: 768px) {
+        .mobile-nav-toggle { display: block; }
+        .app-sidebar {
+            position: fixed;
+            top: var(--header-height);
+            left: -100%;
+            bottom: 0;
+            z-index: 99;
+            transition: left 0.25s ease-in-out;
+            box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+        }
+        .app-sidebar.open { left: 0; }
+    }
+    </style>
+</head>
+<body>
+    <div class="app-wrapper">
+        <header class="app-header">
+            <div class="header-container">
+                <div class="header-left">
+                    {% if current_user.is_authenticated %}
+                    <button class="mobile-nav-toggle" id="sidebarToggleBtn" aria-label="Toggle Sidebar">☰</button>
+                    {% endif %}
+                    <a href="{% if 'admin.dashboard' in endpoints and getattr(current_user, 'role', '') == 'admin' %}{{ url_for('admin.dashboard') }}{% elif 'student.dashboard' in endpoints and getattr(current_user, 'role', '') == 'student' %}{{ url_for('student.dashboard') }}{% elif 'lecturer.dashboard' in endpoints and getattr(current_user, 'role', '') in ['instructor', 'lecturer'] %}{{ url_for('lecturer.dashboard') }}{% elif 'auth.index' in endpoints %}{{ url_for('auth.index') }}{% else %}/{% endif %}" class="brand-logo">
+                        <span>🎓 Makerere Roll Call</span>
+                    </a>
+                </div>
+
+                {% if current_user.is_authenticated %}
+                <div class="header-search">
+                    <div class="global-search-wrap">
+                        <span class="global-search-icon">🔍</span>
+                        <input type="text" id="globalSearchInput" class="global-search-input" placeholder="Search courses, users, sessions... (Ctrl+K)" autocomplete="off">
+                        <div id="globalSearchDropdown" class="global-search-dropdown"></div>
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <button id="themeToggleBtn" class="btn-icon" title="Toggle Theme" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">
+                        {% if active_theme == 'dark' %}☀️{% else %}🌙{% endif %}
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="app-body">
+            {% if current_user.is_authenticated %}
+            <aside class="app-sidebar" id="appSidebar">
+                <nav class="sidebar-nav-group">
+                    <div class="sidebar-section-title">Navigation</div>
+                    
+                    {# GENERAL DASHBOARD LINK #}
+                    {% set dash_route = '#' %}
+                    {% if getattr(current_user, 'role', '') == 'admin' and 'admin.dashboard' in endpoints %}
+                        {% set dash_route = url_for('admin.dashboard') %}
+                    {% elif getattr(current_user, 'role', '') == 'student' and 'student.dashboard' in endpoints %}
+                        {% set dash_route = url_for('student.dashboard') %}
+                    {% elif getattr(current_user, 'role', '') in ['instructor', 'lecturer'] and 'lecturer.dashboard' in endpoints %}
+                        {% set dash_route = url_for('lecturer.dashboard') %}
+                    {% elif 'auth.index' in endpoints %}
+                        {% set dash_route = url_for('auth.index') %}
+                    {% endif %}
+                    <a href="{{ dash_route }}" class="nav-link-item {% if request.endpoint in ['auth.index', 'admin.dashboard', 'student.dashboard', 'lecturer.dashboard'] %}active{% endif %}">
+                        <span class="nav-icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+
+                    {# ADMIN NAVIGATION #}
+                    {% if getattr(current_user, 'role', '') == 'admin' %}
+                    <div class="sidebar-section-title">Admin Management</div>
+                    <a href="{% if 'admin.users' in endpoints %}{{ url_for('admin.users') }}{% else %}#{% endif %}" class="nav-link-item {% if request.endpoint == 'admin.users' %}active{% endif %}">
+                        <span class="nav-icon">👥</span>
+                        <span>Manage Users</span>
+                    </a>
+                    <a href="{% if 'admin.courses' in endpoints %}{{ url_for('admin.courses') }}{% else %}#{% endif %}" class="nav-link-item {% if request.endpoint == 'admin.courses' %}active{% endif %}">
+                        <span class="nav-icon">📚</span>
+                        <span>Manage Courses</span>
+                    </a>
+                    <a href="{% if 'admin.settings' in endpoints %}{{ url_for('admin.settings') }}{% else %}#{% endif %}" class="nav-link-item {% if request.endpoint == 'admin.settings' %}active{% endif %}">
+                        <span class="nav-icon">⚙️</span>
+                        <span>System Settings</span>
+                    </a>
+                    {% endif %}
+
+                    {# LECTURER NAVIGATION #}
+                    {% if getattr(current_user, 'role', '') in ['instructor', 'lecturer'] %}
+                    <div class="sidebar-section-title">Teaching</div>
+                    <a href="{% if 'lecturer.courses' in endpoints %}{{ url_for('lecturer.courses') }}{% elif 'courses.index' in endpoints %}{{ url_for('courses.index') }}{% else %}#{% endif %}" class="nav-link-item">
+                        <span class="nav-icon">📖</span>
+                        <span>My Courses</span>
+                    </a>
+                    <a href="{% if 'lecturer.sessions' in endpoints %}{{ url_for('lecturer.sessions') }}{% elif 'attendance.sessions' in endpoints %}{{ url_for('attendance.sessions') }}{% else %}#{% endif %}" class="nav-link-item">
+                        <span class="nav-icon">📝</span>
+                        <span>Attendance Sessions</span>
+                    </a>
+                    <a href="{% if 'reports.index' in endpoints %}{{ url_for('reports.index') }}{% else %}#{% endif %}" class="nav-link-item">
+                        <span class="nav-icon">📈</span>
+                        <span>Reports</span>
+                    </a>
+                    {% endif %}
+
+                    {# CLASS REP NAVIGATION #}
+                    {% if getattr(current_user, 'is_class_rep', False) or getattr(current_user, 'role', '') == 'class_rep' %}
+                    <div class="sidebar-section-title">Class Rep Portal</div>
+                    <a href="{% if 'class_rep.dashboard' in endpoints %}{{ url_for('class_rep.dashboard') }}{% else %}#{% endif %}" class="nav-link-item">
+                        <span class="nav-icon">🛡️</span>
+                        <span>Class Rep Portal</span>
+                    </a>
+                    <a href="{% if 'attendance.sessions' in endpoints %}{{ url_for('attendance.sessions') }}{% else %}#{% endif %}" class="nav-link-item">
+                        <span class="nav-icon">📝</span>
+                        <span>Start/Manage Roll Call</span>
+                    </a>
+                    {% endif %}
+
+                    {# STUDENT NAVIGATION #}
+                    {% if getattr(current_user, 'role', '') == 'student' %}
+                    <div class="sidebar-section-title">Student Portal</div>
+                    <a href="{% if 'courses.my_courses' in endpoints %}{{ url_for('courses.my_courses') }}{% else %}#{% endif %}" class="nav-link-item">
+                        <span class="nav-icon">📖</span>
+                        <span>My Enrolled Courses</span>
+                    </a>
+                    <a href="{% if 'student.history' in endpoints %}{{ url_for('student.history') }}{% elif 'attendance.my_history' in endpoints %}{{ url_for('attendance.my_history') }}{% else %}#{% endif %}" class="nav-link-item">
+                        <span class="nav-icon">✅</span>
+                        <span>Attendance History</span>
+                    </a>
+                    {% endif %}
+                </nav>
+
+                <div class="sidebar-footer">
+                    <div class="user-profile-badge">
+                        <div class="user-avatar">
+                            {% if hasattr(current_user, 'name') and current_user.name %}
+                                {{ current_user.name[0]|upper }}
+                            {% elif hasattr(current_user, 'full_name') and current_user.full_name %}
+                                {{ current_user.full_name[0]|upper }}
+                            {% else %}
+                                U
+                            {% endif %}
+                        </div>
+                        <div class="user-details">
+                            <span class="name">
+                                {% if hasattr(current_user, 'name') and current_user.name %}
+                                    {{ current_user.name }}
+                                {% elif hasattr(current_user, 'full_name') and current_user.full_name %}
+                                    {{ current_user.full_name }}
+                                {% else %}
+                                    {{ getattr(current_user, 'email', 'User') }}
+                                {% endif %}
+                            </span>
+                            <span class="role-badge">{{ getattr(current_user, 'role', 'User')|replace('_', ' ') }}</span>
+                        </div>
+                    </div>
+                    <a href="{% if 'auth.logout' in endpoints %}{{ url_for('auth.logout') }}{% else %}/logout{% endif %}" class="nav-link-item" style="color: #dc2626;">
+                        <span class="nav-icon">🚪</span>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </aside>
+            {% endif %}
+
+            <main class="main-content">
+                <div class="container">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            <div class="flash-messages" style="margin-bottom: 1.5rem;">
+                                {% for category, message in messages %}
+                                    <div class="flash-alert alert-{{ category }}" style="padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; background: var(--paper-subtle, #e2e8f0);">
+                                        <span class="alert-message">{{ message }}</span>
+                                        <button class="alert-close" onclick="this.parentElement.remove();" style="background:none; border:none; cursor:pointer; font-size: 16px;">&times;</button>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+
+                    {% block content %}{% endblock %}
+                </div>
+            </main>
+        </div>
+
+        <footer class="app-footer">
+            <div class="container">
+                <p>&copy; {{ now().year if now is defined else '2026' }} Makerere University. All rights reserved.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+        const sidebar = document.getElementById('appSidebar');
+
+        if (sidebarToggleBtn && sidebar) {
+            sidebarToggleBtn.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+            });
+        }
+
+        const themeBtn = document.getElementById('themeToggleBtn');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', function() {
+                fetch("{% if 'auth.toggle_theme' in endpoints %}{{ url_for('auth.toggle_theme') }}{% else %}#{% endif %}", { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        document.documentElement.setAttribute('data-theme', data.theme);
+                        themeBtn.textContent = data.theme === 'dark' ? '☀️' : '🌙';
+                    })
+                    .catch(err => console.error("Theme toggle error:", err));
+            });
+        }
+
+        const searchInput = document.getElementById('globalSearchInput');
+        const searchDropdown = document.getElementById('globalSearchDropdown');
+
+        if (searchInput) {
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    searchInput.focus();
+                }
+            });
+
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const query = this.value.trim();
+
+                if (query.length < 2) {
+                    searchDropdown.classList.remove('show');
+                    searchDropdown.innerHTML = '';
+                    return;
+                }
+
+                searchTimeout = setTimeout(() => {
+                    const searchUrl = "{% if 'search.global_search' in endpoints %}{{ url_for('search.global_search') }}{% elif 'search.query' in endpoints %}{{ url_for('search.query') }}{% else %}{% endif %}";
+                    if (!searchUrl) return;
+
+                    fetch(`${searchUrl}?q=${encodeURIComponent(query)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            let html = '';
+                            let totalResults = 0;
+
+                            for (const [group, items] of Object.entries(data)) {
+                                if (Array.isArray(items) && items.length > 0) {
+                                    totalResults += items.length;
+                                    html += `<div class="search-group-header" style="padding:6px 14px; font-weight:bold; font-size:11px; background:#f1f5f9; color:#64748b;">${group}</div>`;
+                                    items.forEach(item => {
+                                        html += `
+                                            <a href="${item.url || '#'}" class="search-result-item" style="display:flex; justify-content:space-between; padding:10px 14px; text-decoration:none; color:inherit;">
+                                                <span>${item.title || item.name || 'Result'}</span>
+                                                <span style="font-size:12px; color:#64748b;">${item.meta || ''}</span>
+                                            </a>
+                                        `;
+                                    });
+                                }
+                            }
+
+                            if (totalResults === 0) {
+                                html = '<div style="padding:12px; text-align:center; font-size:13px;">No results found</div>';
+                            }
+
+                            searchDropdown.innerHTML = html;
+                            searchDropdown.classList.add('show');
+                        })
+                        .catch(err => console.error("Search fetch error:", err));
+                }, 200);
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+                    searchDropdown.classList.remove('show');
+                }
+            });
+        }
+    });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

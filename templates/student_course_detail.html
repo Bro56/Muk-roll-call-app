@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% block title %}{{ course.code }} - Course Details{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ course.code }} - {{ course.name }}</h1>
+    <p class="sub">{{ course.programme.name }} · Year {{ course.year_of_study }} · Semester {{ course.semester }}</p>
+  </div>
+  <div class="head-actions">
+    <a href="{{ url_for('student.dashboard') }}" class="btn">← Back</a>
+  </div>
+</div>
+
+{% if active_session %}
+<div class="card" style="border-color:var(--present); background:var(--present-soft); margin-bottom:24px; animation:pulseBorder 1.6s ease-in-out infinite;">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+    <div>
+      <span class="badge badge-present" style="animation:pulse 1.6s ease-in-out infinite;">🔴 Live Session Ongoing</span>
+      <p style="margin-top:8px; font-weight:500;">The class representative has started a session for this lecture.</p>
+      <p style="font-size:13px; color:var(--ink-soft);">
+        <strong>Session started:</strong> {{ active_session.started_at.strftime('%d %b %Y, %H:%M') }}
+        {% if active_session.ended_at %}
+          <br><strong>Session ended:</strong> {{ active_session.ended_at.strftime('%d %b %Y, %H:%M') }}
+        {% else %}
+          <br><span style="color:var(--present);">🟢 Session is still active</span>
+        {% endif %}
+      </p>
+    </div>
+    {% if attendance_taken %}
+      <span class="badge badge-present" style="font-size:16px; padding:12px 20px; background:var(--present-soft); border:2px solid var(--present);">
+        ✅ Attendance Taken
+      </span>
+    {% else %}
+      <button class="btn btn-primary" onclick="openFaceCapture()" id="attendBtn" style="font-size:16px; padding:14px 28px;">
+        📸 Mark Attendance with Face
+      </button>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Face Capture Modal -->
+<div id="faceModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:var(--paper-raised); border-radius:var(--radius-lg); padding:30px; max-width:500px; width:90%; max-height:90vh; overflow-y:auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="font-size:18px;">Face Verification</h3>
+      <button onclick="closeFaceCapture()" style="background:none; border:none; font-size:24px; cursor:pointer; color:var(--ink-soft);">&times;</button>
+    </div>
+    <p style="color:var(--ink-soft); margin-bottom:16px;">Look straight at the camera and click "Capture & Verify"</p>
+    
+    <div style="position:relative; width:100%; aspect-ratio:4/3; background:#000; border-radius:12px; overflow:hidden; margin-bottom:16px;">
+      <video id="faceVideo" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover;"></video>
+      <canvas id="faceCanvas" style="display:none;"></canvas>
+      <div class="scan-line" style="position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg, transparent, var(--accent-2), transparent); animation:scanMove 2.2s ease-in-out infinite; opacity:1;"></div>
+      
+      <!-- Torch toggle button -->
+      <button id="torchBtn" onclick="toggleTorch()" style="display:none; position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:1px solid rgba(255,255,255,0.3); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer; backdrop-filter:blur(4px);">
+        🔦 Flash
+      </button>
+    </div>
+    
+    <div id="faceStatus" style="text-align:center; margin-bottom:16px; font-size:14px; color:var(--ink-soft);">
+      Please position your face in the frame
+    </div>
+    
+    <div style="display:flex; gap:10px; justify-content:center;">
+      <button onclick="captureAndVerify()" class="btn btn-primary" id="captureBtn">📸 Capture & Verify</button>
+      <button onclick="closeFaceCapture()" class="btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Course Summary Card -->
+<div class="card" style="margin-bottom:24px;">
+  <h2 style="font-size:16px; margin-bottom:12px;">Course Summary</h2>
+  {% if sessions %}
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:16px;">
+      <div>
+        <span style="font-size:12px; color:var(--ink-soft);">Total Sessions</span>
+        <p style="font-size:24px; font-weight:600; margin:0;">{{ sessions|length }}</p>
+      </div>
+      <div>
+        <span style="font-size:12px; color:var(--ink-soft);">Present</span>
+        <p style="font-size:24px; font-weight:600; color:var(--present); margin:0;">{{ attendance_records|length }}</p>
+      </div>
+      <div>
+        <span style="font-size:12px; color:var(--ink-soft);">Attendance Rate</span>
+        <p style="font-size:24px; font-weight:600; margin:0;">
+          {% if sessions|length > 0 %}
+            {{ "%.0f"|format((attendance_records|length / sessions|length) * 100) }}%
+          {% else %}
+            N/A
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  {% else %}
+    <p style="color:var(--ink-soft);">No sessions available yet. Please check back later.</p>
+  {% endif %}
+</div>
+
+<!-- Session List -->
+<h2 style="font-size:18px; margin-bottom:14px;">Session History</h2>
+{% if sessions %}
+<div class="grid grid-2 stagger">
+  {% for session in sessions %}
+  <div class="card">
+    <div class="eyebrow">{{ session.date.strftime('%d %b %Y') }}</div>
+    <h3 style="font-size:15px; margin:4px 0 8px;">{{ session.topic or 'Lecture' }}</h3>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      {% if session.id in attendance_by_session %}
+        <span class="badge badge-present">✅ Present</span>
+        <span style="font-size:12px; color:var(--ink-soft);">
+          {{ attendance_by_session[session.id].marked_at.strftime('%H:%M') }}
+        </span>
+      {% else %}
+        <span class="badge badge-absent">❌ Absent</span>
+        <span style="font-size:12px; color:var(--ink-soft);">Not marked</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty-state">
+  <p>No sessions available for this course.</p>
+</div>
+{% endif %}
+
+<style>
+@keyframes pulseBorder {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(46, 158, 112, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(46, 158, 112, 0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.02); }
+}
+
+@keyframes scanMove {
+  0% { top: 6%; }
+  50% { top: 92%; }
+  100% { top: 6%; }
+}
+
+.btn-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  top: 50%;
+  left: 50%;
+  margin-top: -10px;
+  margin-left: -10px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+let stream = null;
+let capturedDataUrl = null;
+let videoTrack = null;
+let torchOn = false;
+
+function openFaceCapture() {
+  {% if attendance_taken %}
+    alert('You have already marked attendance for this session.');
+    return;
+  {% endif %}
+  
+  document.getElementById('faceModal').style.display = 'flex';
+  
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+    .then(function(s) {
+      stream = s;
+      videoTrack = s.getVideoTracks()[0];
+      document.getElementById('faceVideo').srcObject = s;
+      document.getElementById('faceStatus').textContent = '✅ Camera ready. Position your face in the frame.';
+      document.getElementById('faceStatus').style.color = 'var(--present)';
+      
+      // Show torch button if supported
+      const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
+      if (capabilities && capabilities.torch) {
+        document.getElementById('torchBtn').style.display = 'block';
+      }
+    })
+    .catch(function(err) {
+      document.getElementById('faceStatus').textContent = '❌ Camera access denied. Please allow camera permissions.';
+      document.getElementById('faceStatus').style.color = 'var(--absent)';
+    });
+}
+
+function closeFaceCapture() {
+  document.getElementById('faceModal').style.display = 'none';
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+  }
+  videoTrack = null;
+  torchOn = false;
+  document.getElementById('torchBtn').style.display = 'none';
+  document.getElementById('torchBtn').textContent = '🔦 Flash';
+  var btn = document.getElementById('captureBtn');
+  btn.disabled = false;
+  btn.classList.remove('btn-loading');
+  btn.textContent = '📸 Capture & Verify';
+}
+
+function toggleTorch() {
+  if (!videoTrack) return;
+  torchOn = !torchOn;
+  videoTrack.applyConstraints({
+    advanced: [{ torch: torchOn }]
+  }).then(function() {
+    document.getElementById('torchBtn').textContent = torchOn ? '🔦 Flash On' : '🔦 Flash';
+  }).catch(function() {
+    document.getElementById('torchBtn').textContent = '🔦 Unavailable';
+  });
+}
+
+function captureAndVerify() {
+  var video = document.getElementById('faceVideo');
+  var canvas = document.getElementById('faceCanvas');
+  var context = canvas.getContext('2d');
+  
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  
+  capturedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+  
+  var btn = document.getElementById('captureBtn');
+  btn.disabled = true;
+  btn.classList.add('btn-loading');
+  btn.textContent = '⏳ Getting location...';
+  
+  document.getElementById('faceStatus').textContent = '⏳ Confirming your location...';
+  document.getElementById('faceStatus').style.color = 'var(--late)';
+
+  if (!navigator.geolocation) {
+    document.getElementById('faceStatus').textContent = '❌ Location access is required to mark attendance.';
+    document.getElementById('faceStatus').style.color = 'var(--absent)';
+    btn.disabled = false;
+    btn.classList.remove('btn-loading');
+    btn.textContent = '📸 Capture & Verify';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    function (position) {
+      document.getElementById('faceStatus').textContent = '⏳ Checking you in...';
+      submitAttendance(position.coords.latitude, position.coords.longitude, position.coords.accuracy);
+    },
+    function (err) {
+      document.getElementById('faceStatus').textContent = '❌ Could not get your location. Enable GPS and try again.';
+      document.getElementById('faceStatus').style.color = 'var(--absent)';
+      btn.disabled = false;
+      btn.classList.remove('btn-loading');
+      btn.textContent = '📸 Capture & Verify';
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+function submitAttendance(lat, lon, accuracy) {
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '{{ url_for("student.attend_lecture_session", session_id=active_session.id) if active_session else "#" }}';
+
+  function addField(name, value) {
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  }
+
+  addField('latitude', lat);
+  addField('longitude', lon);
+  addField('accuracy', accuracy);
+  addField('face_image', capturedDataUrl);
+
+    document.body.appendChild(form);
+  
+  if (navigator.vibrate) navigator.vibrate([40, 80, 40]);
+  
+  if (!navigator.onLine && window.queueOfflineAttendance) {
+    var params = new URLSearchParams();
+    for (var i = 0; i < form.elements.length; i++) {
+      params.append(form.elements[i].name, form.elements[i].value);
+    }
+    window.queueOfflineAttendance({
+      action: form.action,
+      body: params.toString()
+    });
+    document.getElementById('faceStatus').textContent = 'You are offline. Attendance is queued and will sync automatically.';
+    document.getElementById('faceStatus').style.color = 'var(--late)';
+    setTimeout(closeFaceCapture, 2000);
+    return;
+  }
+  
+  form.submit();
+}
+</script>
+<script src="{{ url_for('static', filename='js/offline_queue.js') }}"></script>
+{% endblock %}

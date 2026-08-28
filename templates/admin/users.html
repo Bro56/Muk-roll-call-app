@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users | Makerere Roll Call{% endblock %}
+
+{% block content %}
+<div class="users-dashboard">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h2>User Management</h2>
+        <div style="display: flex; gap: 10px;">
+            <a href="{{ url_for('admin.users', type='students') }}" class="btn {% if view_type == 'students' %}btn-primary{% else %}btn-outline{% endif %}" style="padding: 8px 16px; border-radius: 6px; text-decoration: none;">Students</a>
+            <a href="{{ url_for('admin.users', type='lecturers') }}" class="btn {% if view_type == 'lecturers' %}btn-primary{% else %}btn-outline{% endif %}" style="padding: 8px 16px; border-radius: 6px; text-decoration: none;">Lecturers</a>
+        </div>
+    </div>
+
+    <!-- Summary Stats Bar -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div style="background: var(--paper, #fff); padding: 1rem; border-radius: 8px; border: 1px solid var(--sidebar-border);">
+            <div style="font-size: 12px; color: #64748b;">Total Students</div>
+            <div style="font-size: 22px; font-weight: bold;">{{ total_students }}</div>
+        </div>
+        <div style="background: var(--paper, #fff); padding: 1rem; border-radius: 8px; border: 1px solid var(--sidebar-border);">
+            <div style="font-size: 12px; color: #64748b;">Total Lecturers</div>
+            <div style="font-size: 22px; font-weight: bold;">{{ total_lecturers }}</div>
+        </div>
+        <div style="background: var(--paper, #fff); padding: 1rem; border-radius: 8px; border: 1px solid var(--sidebar-border); border-left: 4px solid #800000;">
+            <div style="font-size: 12px; color: #64748b;">Class Representatives</div>
+            <div style="font-size: 22px; font-weight: bold; color: #800000;">{{ total_class_reps }}</div>
+        </div>
+    </div>
+
+    {% if view_type == 'students' %}
+    <!-- Program Selector Filter -->
+    <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;">
+        <label for="programFilter" style="font-weight: 600; font-size: 14px;">Select Program:</label>
+        <select id="programFilter" onchange="location = this.value;" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--sidebar-border);">
+            {% for prog in programs %}
+            <option value="{{ url_for('admin.users', type='students', program=prog) }}" {% if prog == selected_program %}selected{% endif %}>
+                {{ prog }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Students Table -->
+    <div style="background: var(--paper, #fff); border-radius: 8px; border: 1px solid var(--sidebar-border); overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+            <thead style="background: var(--sidebar-hover); border-bottom: 1px solid var(--sidebar-border);">
+                <tr>
+                    <th style="padding: 12px;">Reg Number</th>
+                    <th style="padding: 12px;">Full Name</th>
+                    <th style="padding: 12px;">Program</th>
+                    <th style="padding: 12px;">Year</th>
+                    <th style="padding: 12px;">Role</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr style="border-bottom: 1px solid var(--sidebar-border);">
+                    <td style="padding: 12px;">{{ student.reg_no }}</td>
+                    <td style="padding: 12px; font-weight: 600;">{{ student.name }}</td>
+                    <td style="padding: 12px;">{{ student.program }}</td>
+                    <td style="padding: 12px;">Year {{ student.year }}</td>
+                    <td style="padding: 12px;">
+                        {% if student.is_class_rep %}
+                        <span style="background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">Class Rep</span>
+                        {% else %}
+                        <span style="color: #64748b;">Student</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <!-- Lecturers Table -->
+    <div style="background: var(--paper, #fff); border-radius: 8px; border: 1px solid var(--sidebar-border); overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+            <thead style="background: var(--sidebar-hover); border-bottom: 1px solid var(--sidebar-border);">
+                <tr>
+                    <th style="padding: 12px;">Name</th>
+                    <th style="padding: 12px;">Email</th>
+                    <th style="padding: 12px;">Department</th>
+                    <th style="padding: 12px;">Assigned Courses</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lecturer in lecturers %}
+                <tr style="border-bottom: 1px solid var(--sidebar-border);">
+                    <td style="padding: 12px; font-weight: 600;">{{ lecturer.name }}</td>
+                    <td style="padding: 12px;">{{ lecturer.email }}</td>
+                    <td style="padding: 12px;">{{ lecturer.department }}</td>
+                    <td style="padding: 12px;">{{ lecturer.courses|join(', ') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

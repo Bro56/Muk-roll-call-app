@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Student Account — Roll Call</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="flash-stack">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="flash flash-{{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+<div style="max-width:760px; margin:0 auto; padding:44px 20px;">
+  <div style="text-align:center; margin-bottom:8px;">
+    <a href="{{ url_for('auth.login', role='student') }}" style="font-family:var(--font-mono); font-size:12px; color:var(--ink-soft);">&larr; Back to sign in</a>
+  </div>
+  <div class="card fade-in" style="padding:36px;">
+    <h1 style="font-size:26px; margin-bottom:4px;">Create your student account</h1>
+    <p class="sub" style="color:var(--ink-soft); margin-bottom:28px;">Set up your profile, pick your programme, and enroll your face for biometric roll call.</p>
+
+    <form method="POST" id="signupForm">
+      <div class="eyebrow" style="margin-bottom:10px;">1. Your details</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Full name</label>
+          <input type="text" name="full_name" placeholder="e.g. Grace Nabirye" value="{{ form.full_name|default('') }}" required>
+        </div>
+        <div class="field">
+          <label>Username</label>
+          <input type="text" name="username" placeholder="e.g. nabirye.grace" value="{{ form.username|default('') }}" required>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Email <span style="color:var(--absent);">*</span></label>
+          <input type="email" name="email" placeholder="you@students.mak.ac.ug" value="{{ form.email|default('') }}" required>
+        </div>
+        <div class="field">
+          <label>Student number</label>
+          <input type="text" name="student_number" placeholder="e.g. 2300712345" value="{{ form.student_number|default('') }}">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Registration number <span style="color:var(--absent);">*</span></label>
+          <input type="text" name="registration_number" placeholder="e.g. 23/U/12345/PS" value="{{ form.registration_number|default('') }}" required>
+        </div>
+        <div class="field">
+          <label>Year of study</label>
+          <select name="year_of_study">
+            {% for y in [1,2,3,4,5] %}<option value="{{ y }}">Year {{ y }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Password</label>
+          <input type="password" name="password" placeholder="••••••••" required>
+        </div>
+        <div class="field">
+          <label>Confirm password</label>
+          <input type="password" name="confirm" placeholder="••••••••" required>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="eyebrow" style="margin-bottom:10px;">2. Your college, school, department &amp; programme</div>
+      <div class="field-row">
+        <div class="field">
+          <label>College</label>
+          <select id="collegeSelect">
+            <option value="">Select college…</option>
+            {% for c in colleges %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>School</label>
+          <select id="schoolSelect" disabled><option value="">Select college first…</option></select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Department</label>
+          <select id="departmentSelect" disabled><option value="">Select school first…</option></select>
+        </div>
+        <div class="field">
+          <label>Programme</label>
+          <select id="programmeSelect" name="programme_id" disabled required><option value="">Select department first…</option></select>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="eyebrow" style="margin-bottom:10px;">3. Enroll your face for biometric roll call</div>
+      <p style="font-size:13.5px; color:var(--ink-soft); margin-bottom:16px;">
+        This photo is converted into a numeric face signature used to check you in during roll call — look
+        straight at the camera in good lighting, with only your face in frame.
+      </p>
+
+      <div class="cam-wrap" id="camWrap">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="scan-line"></div>
+      </div>
+      <div id="capturedPreview" class="hidden" style="text-align:center; margin-top:14px;">
+        <img id="previewImg" style="max-width:220px; border-radius:12px; border:3px solid var(--present); box-shadow:var(--shadow-md);">
+      </div>
+      <p class="cam-caption" id="camCaption">Starting camera…</p>
+
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
+        <button type="button" id="captureBtn" class="btn btn-primary">Capture photo</button>
+        <button type="button" id="retakeBtn" class="btn hidden">Retake</button>
+      </div>
+
+      <input type="hidden" name="face_image_data" id="faceImageData">
+
+      <div class="divider"></div>
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn" disabled>Create account</button>
+    </form>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<script src="{{ url_for('static', filename='js/webcam.js') }}"></script>
+<script>
+  // ---- Cascading dropdowns ----
+  const collegeSelect = document.getElementById('collegeSelect');
+  const schoolSelect = document.getElementById('schoolSelect');
+  const departmentSelect = document.getElementById('departmentSelect');
+  const programmeSelect = document.getElementById('programmeSelect');
+
+  function resetSelect(sel, placeholder) {
+    sel.innerHTML = `<option value="">${placeholder}</option>`;
+    sel.disabled = true;
+  }
+
+  collegeSelect.addEventListener('change', async () => {
+    resetSelect(schoolSelect, 'Loading…'); resetSelect(departmentSelect, 'Select school first…'); resetSelect(programmeSelect, 'Select department first…');
+    if (!collegeSelect.value) { resetSelect(schoolSelect, 'Select college first…'); return; }
+    const res = await fetch(`/api/schools/${collegeSelect.value}`);
+    const schools = await res.json();
+    schoolSelect.innerHTML = '<option value="">Select school…</option>' + schools.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    schoolSelect.disabled = false;
+  });
+
+  schoolSelect.addEventListener('change', async () => {
+    resetSelect(departmentSelect, 'Loading…'); resetSelect(programmeSelect, 'Select department first…');
+    if (!schoolSelect.value) { resetSelect(departmentSelect, 'Select school first…'); return; }
+    const res = await fetch(`/api/departments/${schoolSelect.value}`);
+    const depts = await res.json();
+    departmentSelect.innerHTML = '<option value="">Select department…</option>' + depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    departmentSelect.disabled = false;
+  });
+
+  departmentSelect.addEventListener('change', async () => {
+    resetSelect(programmeSelect, 'Loading…');
+    if (!departmentSelect.value) { resetSelect(programmeSelect, 'Select department first…'); return; }
+    const res = await fetch(`/api/programmes/${departmentSelect.value}`);
+    const progs = await res.json();
+    programmeSelect.innerHTML = '<option value="">Select programme…</option>' + progs.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('');
+    programmeSelect.disabled = false;
+  });
+
+  // ---- Webcam capture ----
+  const video = document.getElementById('video');
+  const camWrap = document.getElementById('camWrap');
+  const camCaption = document.getElementById('camCaption');
+  const captureBtn = document.getElementById('captureBtn');
+  const retakeBtn = document.getElementById('retakeBtn');
+  const previewImg = document.getElementById('previewImg');
+  const capturedPreview = document.getElementById('capturedPreview');
+  const faceImageData = document.getElementById('faceImageData');
+  const submitBtn = document.getElementById('submitBtn');
+
+  const cam = new RollCallCamera(video);
+
+  async function initCamera() {
+    try {
+      await cam.start();
+      camWrap.classList.add('scanning');
+      camCaption.textContent = 'Center your face in the frame, then capture.';
+    } catch (e) {
+      camCaption.textContent = 'Camera access denied. Please allow camera permissions and reload.';
+      captureBtn.disabled = true;
+    }
+  }
+  initCamera();
+
+  captureBtn.addEventListener('click', () => {
+    const dataUrl = cam.captureFrame();
+    faceImageData.value = dataUrl;
+    previewImg.src = dataUrl;
+    capturedPreview.classList.remove('hidden');
+    video.style.display = 'none';
+    camWrap.classList.remove('scanning');
+    camWrap.classList.add('success');
+    camCaption.textContent = 'Photo captured. Looks good? Or retake it.';
+    captureBtn.classList.add('hidden');
+    retakeBtn.classList.remove('hidden');
+    submitBtn.disabled = false;
+    cam.stop();
+  });
+
+  retakeBtn.addEventListener('click', async () => {
+    capturedPreview.classList.add('hidden');
+    video.style.display = 'block';
+    camWrap.classList.remove('success');
+    faceImageData.value = '';
+    submitBtn.disabled = true;
+    captureBtn.classList.remove('hidden');
+    retakeBtn.classList.add('hidden');
+    await initCamera();
+  });
+</script>
+</body>
+</html>

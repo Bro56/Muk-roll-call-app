@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Apply as Class Representative{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Apply as Class Representative</h1>
+  <p class="sub">Submit your request to the admin. You will be notified once approved.</p>
+</div>
+
+{% if existing_request %}
+<div class="card" style="border-color:var(--late); background:var(--late-soft); margin-bottom:24px;">
+  {% if existing_request.approved %}
+    <strong style="color:var(--present);">✅ You are already an approved class representative!</strong>
+    <p style="margin-top:8px;">You can access the <a href="{{ url_for('class_rep.dashboard') }}" style="color:var(--accent); font-weight:600;">Class Rep Dashboard</a>.</p>
+  {% else %}
+    <strong style="color:var(--late);">⏳ Your application is pending admin approval.</strong>
+    <p style="margin-top:8px;">You will be notified once the admin approves your request.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if not existing_request or not existing_request.approved %}
+<div class="card" style="max-width:500px;">
+  <form method="POST">
+    <div class="field">
+      <label for="programme_id">Select your programme</label>
+      <select name="programme_id" id="programme_id" required>
+        <option value="">-- Choose programme --</option>
+        {% for prog in programmes %}
+        <option value="{{ prog.id }}">{{ prog.name }} ({{ prog.code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit Request</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

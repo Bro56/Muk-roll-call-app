@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<meta name="theme-color" content="#800000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Sign in — Roll Call</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="flash-stack">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="flash flash-{{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+<div class="auth-wrap">
+  <div class="auth-hero">
+    <div class="auth-hero-inner">
+      <div class="brand-line">Makerere University</div>
+      <img src="{{ url_for('static', filename='images/logo.png') }}" 
+           alt="Makerere University" 
+           style="width: 180px; height: auto; margin: 0 auto 22px; display: block;">
+      <h2>We Build For The Future</h2>
+      <p class="tagline">Biometric roll call for every lecture — fast check-ins, honest attendance, no paper registers.</p>
+
+      <div class="ledger">
+        <div class="ledger-row"><span class="dot"></span> Face recognition check-in</div>
+        <div class="ledger-row"><span class="dot"></span> QR fallback for every session</div>
+        <div class="ledger-row"><span class="dot"></span> Live attendance percentages</div>
+        <div class="ledger-row"><span class="dot"></span> College → School → Programme structure</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-panel">
+    <div class="auth-card fade-in">
+      <h1>Welcome back</h1>
+      <p class="sub">Sign in to continue to Roll Call.</p>
+
+      <div class="role-tabs">
+        <a href="{{ url_for('auth.login', role='student') }}" class="{{ 'active' if role == 'student' }}">Student</a>
+        <a href="{{ url_for('auth.login', role='classrep') }}" class="{{ 'active' if role == 'classrep' }}">Class Rep</a>
+        <a href="{{ url_for('auth.login', role='lecturer') }}" class="{{ 'active' if role == 'lecturer' }}">Lecturer</a>
+      </div>
+
+      <form method="POST" id="passwordForm">
+        <input type="hidden" name="role" value="{{ role }}">
+        <div class="field">
+          <label>Username</label>
+          <input type="text" name="username" id="loginUsername" value="{{ username|default('') }}" placeholder="e.g. nabirye.grace" required autofocus>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" name="password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+      </form>
+
+      <div style="margin:16px 0; text-align:center;">
+        <div style="height:1px; background:var(--line); position:relative;">
+          <span style="background:var(--paper); padding:0 10px; position:relative; top:-9px; font-size:12px; color:var(--ink-soft);">or</span>
+        </div>
+      </div>
+
+      <button onclick="signInWithPasskey()" class="btn btn-block" style="background:var(--paper-raised); border-color:var(--line);">
+        🔑 Sign in with Passkey
+      </button>
+
+      <p class="auth-switch"><a href="{{ url_for('auth.forgot_password') }}">Forgot your password?</a></p>
+
+      {% if role == 'student' %}
+        <p class="auth-switch">New here? <a href="{{ url_for('auth.signup_student') }}">Create a student account</a></p>
+      {% elif role == 'classrep' %}
+        <p class="auth-switch">Not a class rep yet? <a href="{{ url_for('class_rep.register_request') }}">Apply now</a></p>
+      {% elif role == 'lecturer' %}
+        <p class="auth-switch">New here? <a href="{{ url_for('auth.signup_lecturer') }}">Create a lecturer account</a></p>
+      {% endif %}
+
+      <button class="theme-toggle" data-theme-toggle data-authed="false" style="margin:22px auto 0; display:flex;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<script>
+async function signInWithPasskey() {
+  const username = document.getElementById('loginUsername').value.trim();
+  if (!username) {
+    alert('Please enter your username first.');
+    return;
+  }
+  
+  try {
+    const beginResp = await fetch('/webauthn/login/begin', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username: username})
+    });
+    const options = await beginResp.json();
+    if (options.error) { alert(options.error); return; }
+    
+    options.challenge = Uint8Array.from(atob(options.challenge), c => c.charCodeAt(0));
+    options.allowCredentials = options.allowCredentials.map(function(c) {
+      return { ...c, id: Uint8Array.from(atob(c.id), x => x.charCodeAt(0)) };
+    });
+    
+    const credential = await navigator.credentials.get({ publicKey: options });
+    
+    const completeResp = await fetch('/webauthn/login/complete', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        id: credential.id,
+        rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+        response: {
+          authenticatorData: btoa(String.fromCharCode(...new Uint8Array(credential.response.authenticatorData))),
+          clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON))),
+          signature: btoa(String.fromCharCode(...new Uint8Array(credential.response.signature))),
+          userHandle: credential.response.userHandle ? btoa(String.fromCharCode(...new Uint8Array(credential.response.userHandle))) : null,
+        },
+        type: credential.type,
+      })
+    });
+    const result = await completeResp.json();
+    if (result.success) {
+      if (navigator.vibrate) navigator.vibrate([50]);
+      window.location.href = '/' + result.role + '/dashboard';
+    } else {
+      alert(result.error || 'Passkey sign-in failed.');
+    }
+  } catch (e) {
+    alert('Passkey authentication failed or was cancelled.');
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}GPS Failure Heatmap{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Lecture Hall GPS Heatmap</h1>
+    <p class="sub">Where students struggle most to check in — flags WiFi dead zones and GPS blackspots.</p>
+  </div>
+</div>
+
+<div class="card" style="padding:0; overflow:hidden;">
+  <div id="map" style="width:100%; height:500px; background:var(--paper);"></div>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map').setView([0.335, 32.57], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+  
+  const points = {{ points|tojson }};
+  const maxFailures = Math.max(...points.map(p => p.failures), 1);
+  
+  points.forEach(function(p) {
+    const intensity = p.failures / maxFailures;
+    const color = intensity > 0.7 ? '#DA5A4C' : intensity > 0.3 ? '#DC9C2F' : '#2E9E70';
+    const radius = 8 + (intensity * 20);
+    
+    L.circleMarker([p.lat, p.lon], {
+      radius: radius,
+      fillColor: color,
+      color: color,
+      weight: 1,
+      opacity: 0.8,
+      fillOpacity: 0.5
+    }).addTo(map).bindPopup(
+      '<strong>' + p.course + '</strong><br>' + p.failures + ' failed check-ins'
+    );
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,8 @@
+Requirement already satisfied: webauthn in C:\Users\HP\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (3.0.0)
+Requirement already satisfied: pyasn1>=0.6.2 in C:\Users\HP\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from webauthn) (0.6.4)
+Requirement already satisfied: pyasn1-modules>=0.4.2 in C:\Users\HP\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from webauthn) (0.4.2)
+Requirement already satisfied: cbor2>=6.1.2 in C:\Users\HP\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from webauthn) (6.1.4)
+Requirement already satisfied: cryptography>=49.0.0 in C:\Users\HP\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from webauthn) (50.0.1)
+Requirement already satisfied: pyOpenSSL>=26.3.0 in C:\Users\HP\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from webauthn) (26.4.0)
+Requirement already satisfied: cffi>=2.0.0 in C:\Users\HP\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from cryptography>=49.0.0->webauthn) (2.1.1)
+Requirement already satisfied: pycparser in C:\Users\HP\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from cffi>=2.0.0->cryptography>=49.0.0->webauthn) (3.0)

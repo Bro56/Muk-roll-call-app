@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}My Courses{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Welcome, {{ current_user.full_name.split(' ')[0] }}</h1>
+    <p class="sub">Your assigned courses, with live updates whenever a class rep opens roll call.</p>
+  </div>
+</div>
+
+{% if cards %}
+<div class="grid grid-2 stagger" id="courseGrid">
+  {% for c in cards %}
+  <a href="{{ url_for('lecturer.course_detail', course_id=c.course.id) }}"
+     class="card hoverable live-course-card" data-course-id="{{ c.course.id }}"
+     id="card-{{ c.course.id }}">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <div class="eyebrow">{{ c.course.code }}</div>
+        <h3 style="font-size:17px; margin-top:4px;">{{ c.course.name }}</h3>
+      </div>
+      <span class="badge badge-late live-badge" id="badge-{{ c.course.id }}" style="display:{{ 'inline-flex' if c.live_session else 'none' }};">Live now</span>
+    </div>
+    <div style="display:flex; gap:22px; margin-top:16px; align-items:flex-end;">
+      <div>
+        <div class="eyebrow">Enrolled</div>
+        <div style="font-weight:700; font-size:18px;">{{ c.enrolled }}</div>
+      </div>
+      <div>
+        <div class="eyebrow">Avg attendance</div>
+        <div style="font-weight:700; font-size:18px; color:{{ 'var(--present)' if c.avg_attendance >= 75 else 'var(--absent)' }};">{{ "%.0f"|format(c.avg_attendance) }}%</div>
+      </div>
+      <div class="live-checkin-box" id="box-{{ c.course.id }}" style="display:{{ 'block' if c.live_session else 'none' }};">
+        <div class="eyebrow">Checking in</div>
+        <div style="font-weight:700; font-size:18px;" class="live-checkin-count" id="count-{{ c.course.id }}">
+          {{ c.live_session.attendances|length if c.live_session else '—' }} / {{ c.enrolled }}
+        </div>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty-state">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+  <p>You haven't been assigned any courses yet. Ask your administrator to assign you.</p>
+</div>
+{% endif %}
+
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+(function () {
+  const socket = io();
+  
+  {% for c in cards %}
+  socket.emit('join_course', { course_id: {{ c.course.id }} });
+  {% endfor %}
+  
+  socket.on('session_started', function(data) {
+    const card = document.getElementById('card-' + data.course_id);
+    if (!card) return;
+    document.getElementById('badge-' + data.course_id).style.display = 'inline-flex';
+    document.getElementById('box-' + data.course_id).style.display = 'block';
+    document.getElementById('count-' + data.course_id).textContent = '0 / ' + 
+      card.querySelector('.live-checkin-box').textContent.split('/')[1].trim();
+  });
+  
+  socket.on('student_checked_in', function(data) {
+    const countEl = document.getElementById('count-' + data.course_id);
+    if (countEl) {
+      countEl.textContent = data.checked_in_count + ' / ' + data.total_enrolled;
+    }
+  });
+  
+  socket.on('session_ended', function(data) {
+    document.getElementById('badge-' + data.course_id).style.display = 'none';
+    document.getElementById('box-' + data.course_id).style.display = 'none';
+  });
+})();
+</script>
+{% endblock %}

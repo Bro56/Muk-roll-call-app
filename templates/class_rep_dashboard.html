@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Class Representative Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Class Rep Dashboard</h1>
+    <p class="sub">{{ classrep.programme.name }} · {{ classrep.user.full_name }}</p>
+  </div>
+  <div class="head-actions">
+    <span class="badge badge-{{ 'present' if classrep.approved else 'absent' }}">
+      {{ 'Approved' if classrep.approved else 'Pending' }}
+    </span>
+  </div>
+</div>
+
+{% if not classrep.approved %}
+<div class="card" style="border-color:var(--late); background:var(--late-soft); margin-bottom:24px;">
+  <strong>Your account is pending admin approval.</strong> You cannot start sessions until approved.
+</div>
+{% endif %}
+
+<!-- Any teammate's active session shows here too -->
+{% if active_session %}
+<div class="card" style="border-color:var(--present); background:var(--present-soft); margin-bottom:24px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+    <div>
+      <strong>Active session:</strong> {{ active_session.course_session.course.code }} - {{ active_session.course_session.topic or 'Lecture' }}
+      <br><small>Started by {{ active_session.started_by_name }} ({{ active_session.started_by_label }}) at {{ active_session.started_at.strftime('%H:%M') }} · {{ radius_metres|int }}m radius</small>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <a href="{{ url_for('class_rep.course_detail', course_id=active_session.course_session.course_id) }}" class="btn btn-sm">View</a>
+      <form method="POST" action="{{ url_for('class_rep.end_session', session_id=active_session.id) }}" onsubmit="return confirm('End this session? Students will no longer be able to check in.')">
+        <button type="submit" class="btn btn-sm btn-danger">End Session</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Needs-attention summary -->
+{% if attention_total > 0 %}
+<div class="card" style="border-color:var(--late); background:var(--late-soft); margin-bottom:24px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+    <div>
+      <strong>⚠️ {{ attention_total }} student{{ 's' if attention_total != 1 }} need{{ '' if attention_total != 1 else 's' }} help checking in</strong>
+      <p style="font-size:13px; color:var(--ink-soft); margin-top:4px;">Open a course below to see who and rectify their attendance.</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<h2 style="font-size:18px; margin-bottom:14px;">Your Courses</h2>
+{% if courses %}
+<div class="grid grid-2 stagger">
+  {% for course in courses %}
+  <div class="card">
+    <div class="eyebrow">{{ course.code }}</div>
+    <h3 style="font-size:16px; margin:4px 0 10px;">{{ course.name }}</h3>
+    <p style="font-size:13px; color:var(--ink-soft); margin-bottom:10px;">
+      Year {{ course.year_of_study }} · Semester {{ course.semester }}
+    </p>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <a href="{{ url_for('class_rep.course_detail', course_id=course.id) }}" class="btn btn-sm btn-primary">
+        Manage Session
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty-state">
+  <p>No courses found for your programme.</p>
+</div>
+{% endif %}
+{% endblock %}

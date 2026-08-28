@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Class Rep Requests{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Class Representative Requests</h1>
+  <p class="sub">View and manage all class‑rep applications.</p>
+</div>
+
+<div style="margin-bottom:20px;">
+  <div class="role-tabs" style="display:flex; gap:10px; background:var(--paper-raised); border:1px solid var(--line); border-radius:12px; padding:6px; width:fit-content;">
+    <a href="#pending" class="btn btn-sm btn-primary">Pending</a>
+    <a href="#approved" class="btn btn-sm">Approved</a>
+  </div>
+</div>
+
+<!-- PENDING SECTION -->
+<h2 id="pending" style="font-size:18px; margin:24px 0 12px;">Pending Requests</h2>
+{% if pending %}
+<table class="roster">
+  <thead>
+    <tr><th>Student</th><th>Programme</th><th>Requested On</th><th>Action</th></tr>
+  </thead>
+  <tbody>
+    {% for req in pending %}
+    <tr>
+      <td>
+        <div class="person-cell">
+          <div class="avatar">{{ req.user.full_name[0] }}</div>
+          <div>
+            <strong>{{ req.user.full_name }}</strong><br>
+            <small style="color:var(--ink-soft);">{{ req.user.email }} · {{ req.user.student_profile.registration_number or 'N/A' }}</small>
+          </div>
+        </div>
+      </td>
+      <td>{{ req.programme.name }} ({{ req.programme.code }})</td>
+      <td>{{ req.created_at.strftime('%d %b %Y, %H:%M') }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('admin.approve_classrep', request_id=req.id) }}" style="display:inline;">
+          <button type="submit" class="btn btn-sm btn-primary" onclick="return confirm('Approve {{ req.user.full_name }} as class rep?')">Approve</button>
+        </form>
+        <form method="POST" action="{{ url_for('admin.reject_classrep', request_id=req.id) }}" style="display:inline;">
+          <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Reject {{ req.user.full_name }}? This cannot be undone.')">Reject</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card empty-state"><p>No pending requests.</p></div>
+{% endif %}
+
+<!-- APPROVED SECTION -->
+<h2 id="approved" style="font-size:18px; margin:40px 0 12px;">Approved Requests</h2>
+{% if approved %}
+<table class="roster">
+  <thead>
+    <tr><th>Student</th><th>Programme</th><th>Approved On</th><th>Approved By</th></tr>
+  </thead>
+  <tbody>
+    {% for req in approved %}
+    <tr>
+      <td>
+        <div class="person-cell">
+          <div class="avatar">{{ req.user.full_name[0] }}</div>
+          <div>
+            <strong>{{ req.user.full_name }}</strong><br>
+            <small style="color:var(--ink-soft);">{{ req.user.email }} · {{ req.user.student_profile.registration_number or 'N/A' }}</small>
+          </div>
+        </div>
+      </td>
+      <td>{{ req.programme.name }} ({{ req.programme.code }})</td>
+      <td>{{ req.created_at.strftime('%d %b %Y, %H:%M') }}</td>
+      <td>{{ req.approver.full_name if req.approver else 'Unknown' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card empty-state"><p>No approved class reps yet.</p></div>
+{% endif %}
+
+{% endblock %}

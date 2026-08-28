@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Manage Users{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Manage Users</h1>
+  <p class="sub">View all users in the system.</p>
+</div>
+
+<!-- Students -->
+<h2 style="font-size:18px; margin:24px 0 12px;">Students ({{ students|length }})</h2>
+{% if students %}
+<table class="roster">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Username</th>
+      <th>Email</th>
+      <th>Registration No.</th>
+      <th>Programme</th>
+      <th>Face Enrolled</th>
+      <th>Class Rep</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in students %}
+    <tr>
+      <td>{{ s.full_name }}</td>
+      <td>{{ s.username }}</td>
+      <td>{{ s.email or 'N/A' }}</td>
+      <td>{{ s.student_profile.registration_number or 'N/A' }}</td>
+      <td>{{ s.student_profile.programme.name if s.student_profile.programme else 'N/A' }}</td>
+      <td>
+        {# ✅ FIXED: Check if face_encoding is not None #}
+        {% if s.student_profile.face_encoding is not none %}
+          <span class="badge badge-present">✅ Yes</span>
+        {% else %}
+          <span class="badge badge-absent">❌ No</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if s.classrep %}
+          {% if s.classrep.approved %}
+            <span class="badge badge-present">✅ Approved</span>
+          {% else %}
+            <span class="badge badge-absent">⏳ Pending</span>
+          {% endif %}
+        {% else %}
+          <span class="badge badge-neutral">—</span>
+        {% endif %}
+      </td>
+      <td>
+        <form method="POST" action="{{ url_for('admin.delete_user', user_id=s.id) }}" style="display:inline;" onsubmit="return confirm('Delete this user?');">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card empty-state"><p>No students found.</p></div>
+{% endif %}
+
+<!-- Lecturers -->
+<h2 style="font-size:18px; margin:40px 0 12px;">Lecturers ({{ lecturers|length }})</h2>
+{% if lecturers %}
+<table class="roster">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Username</th>
+      <th>Email</th>
+      <th>Courses</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for l in lecturers %}
+    <tr>
+      <td>{{ l.full_name }}</td>
+      <td>{{ l.username }}</td>
+      <td>{{ l.email or 'N/A' }}</td>
+      <td>{{ l.lecturer_courses|length }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('admin.delete_user', user_id=l.id) }}" style="display:inline;" onsubmit="return confirm('Delete this user?');">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card empty-state"><p>No lecturers found.</p></div>
+{% endif %}
+
+<!-- Admins -->
+<h2 style="font-size:18px; margin:40px 0 12px;">Admins ({{ admins|length }})</h2>
+{% if admins %}
+<table class="roster">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Username</th>
+      <th>Email</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in admins %}
+    <tr>
+      <td>{{ a.full_name }}</td>
+      <td>{{ a.username }}</td>
+      <td>{{ a.email or 'N/A' }}</td>
+      <td>
+        {% if a.id != current_user.id %}
+          <form method="POST" action="{{ url_for('admin.delete_user', user_id=a.id) }}" style="display:inline;" onsubmit="return confirm('Delete this admin?');">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        {% else %}
+          <span class="badge badge-neutral">You</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card empty-state"><p>No admins found.</p></div>
+{% endif %}
+{% endblock %}

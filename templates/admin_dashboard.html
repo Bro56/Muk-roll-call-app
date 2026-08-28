@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Admin Overview{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Admin overview</h1>
+    <p class="sub">System-wide snapshot of Roll Call at Makerere University.</p>
+  </div>
+</div>
+
+<div class="grid grid-3 stagger">
+  <div class="card stat-card"><span class="label">Colleges</span><span class="value">{{ stats.colleges }}</span></div>
+  <div class="card stat-card"><span class="label">Schools</span><span class="value">{{ stats.schools }}</span></div>
+  <div class="card stat-card"><span class="label">Departments</span><span class="value">{{ stats.departments }}</span></div>
+  <div class="card stat-card"><span class="label">Programmes</span><span class="value">{{ stats.programmes }}</span></div>
+  <div class="card stat-card"><span class="label">Courses</span><span class="value">{{ stats.courses }}</span></div>
+  <div class="card stat-card"><span class="label">Students</span><span class="value">{{ stats.students }}</span></div>
+  <div class="card stat-card"><span class="label">Lecturers</span><span class="value">{{ stats.lecturers }}</span></div>
+  <div class="card stat-card"><span class="label">Faces enrolled</span><span class="value">{{ stats.enrolled_faces }}</span></div>
+</div>
+
+<div class="grid grid-4" style="margin-top:28px;">
+  <a href="{{ url_for('admin.structure') }}" class="card hoverable">
+    <h3 style="font-size:16px;">Manage academic structure</h3>
+    <p style="color:var(--ink-soft); font-size:13.5px; margin-top:6px;">Colleges, schools, departments, programmes.</p>
+  </a>
+  <a href="{{ url_for('admin.courses') }}" class="card hoverable">
+    <h3 style="font-size:16px;">Manage courses</h3>
+    <p style="color:var(--ink-soft); font-size:13.5px; margin-top:6px;">Add courses and assign lecturers.</p>
+  </a>
+  <a href="{{ url_for('admin.users') }}" class="card hoverable">
+    <h3 style="font-size:16px;">Manage users</h3>
+    <p style="color:var(--ink-soft); font-size:13.5px; margin-top:6px;">View and remove student/lecturer accounts.</p>
+  </a>
+  <!-- 🔔 FIXED: Changed from admin.requests to admin.classrep_requests -->
+  <a href="{{ url_for('admin.classrep_requests') }}" class="card hoverable" style="border-color:var(--accent-2);">
+    <h3 style="font-size:16px;">Class Rep Requests</h3>
+    <p style="color:var(--ink-soft); font-size:13.5px; margin-top:6px;">
+      <span style="font-weight:700; color:var(--accent);">
+        {{ pending_requests_count|default(0) }}
+      </span> pending approval
+    </p>
+    <div style="margin-top:10px; font-size:12px; color:var(--ink-soft);">
+      Review and manage applications
+    </div>
+  </a>
+</div>
+<a href="{{ url_for('admin.lecturer_codes') }}" class="btn btn-sm">🔑 Lecturer Codes</a>
+
+{% endblock %}

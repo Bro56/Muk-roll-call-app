@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Scan QR Code{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Scan check-in code</h1>
+    <p class="sub">Point your camera at the QR code shown by your lecturer or class rep.</p>
+  </div>
+</div>
+
+<div class="card fade-in" style="max-width:420px; text-align:center;">
+  <div id="scannerContainer" style="position:relative; width:100%; aspect-ratio:1; background:#000; border-radius:12px; overflow:hidden; margin-bottom:16px;">
+    <video id="scanVideo" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover;"></video>
+    <canvas id="scanCanvas" style="display:none;"></canvas>
+    <div id="scanOverlay" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none;">
+      <div style="border:2px dashed rgba(255,255,255,0.5); width:65%; aspect-ratio:1; border-radius:12px;"></div>
+    </div>
+  </div>
+  <p id="scanStatus" style="font-size:14px; color:var(--ink-soft); margin-bottom:12px;">Requesting camera access…</p>
+  
+  <form method="POST" id="scanForm" style="display:none;">
+    <input type="hidden" name="qr_code" id="qrCodeInput">
+  </form>
+</div>
+
+<script>
+  const video = document.getElementById('scanVideo');
+  const canvas = document.getElementById('scanCanvas');
+  const ctx = canvas.getContext('2d');
+  const statusEl = document.getElementById('scanStatus');
+  const form = document.getElementById('scanForm');
+  const input = document.getElementById('qrCodeInput');
+  let scanning = true;
+
+  async function startScanner() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      video.srcObject = stream;
+      await video.play();
+      statusEl.textContent = 'Align the QR code inside the frame';
+      detectLoop();
+    } catch (err) {
+      statusEl.textContent = 'Camera access denied. Please allow camera permissions.';
+      statusEl.style.color = 'var(--absent)';
+    }
+  }
+
+  async function detectLoop() {
+    if (!scanning) return;
+    
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      if ('BarcodeDetector' in window) {
+        const detector = new BarcodeDetector({ formats: ['qr_code'] });
+        try {
+          const codes = await detector.detect(canvas);
+          if (codes.length > 0) {
+            const rawValue = codes[0].rawValue;
+            statusEl.textContent = 'Code detected! Checking in…';
+            statusEl.style.color = 'var(--present)';
+            scanning = false;
+            input.value = rawValue;
+            
+            // Haptic feedback on successful scan
+            if (navigator.vibrate) navigator.vibrate([50]);
+            
+            form.submit();
+            return;
+          }
+        } catch (e) {
+          // ignore frame-level detection errors
+        }
+      } else {
+        statusEl.textContent = 'QR scanning is not supported in this browser. Please use Chrome on Android or Safari on iOS 17+.';
+        statusEl.style.color = 'var(--absent)';
+        return;
+      }
+    }
+    
+    requestAnimationFrame(detectLoop);
+  }
+
+  startScanner();
+</script>
+{% endblock %}

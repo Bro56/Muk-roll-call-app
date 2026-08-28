@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Academic Structure{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Academic structure</h1>
+    <p class="sub">College &rarr; School &rarr; Department &rarr; Programme. Add new units below, or expand a college to manage what's inside it.</p>
+  </div>
+</div>
+
+<details class="card" style="margin-bottom:24px;">
+  <summary style="cursor:pointer; font-weight:700;">+ Add a new college</summary>
+  <form method="POST" action="{{ url_for('admin.add_college') }}" style="margin-top:16px;">
+    <div class="field-row">
+      <div class="field"><label>College name</label><input type="text" name="name" placeholder="e.g. College of Computing and Information Sciences" required></div>
+      <div class="field"><label>Short code</label><input type="text" name="code" placeholder="e.g. COCIS" required></div>
+    </div>
+    <button type="submit" class="btn btn-primary">Add college</button>
+  </form>
+</details>
+
+{% for college in colleges %}
+<details class="card" style="margin-bottom:16px;">
+  <summary style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+    <span><strong>{{ college.name }}</strong> <span class="badge badge-neutral">{{ college.code }}</span></span>
+    <form method="POST" action="{{ url_for('admin.delete_entity', entity='college', entity_id=college.id) }}" onsubmit="return confirm('Delete this college and everything inside it?');" style="display:inline;">
+      <button type="submit" class="btn btn-sm btn-danger" onclick="event.stopPropagation();">Delete</button>
+    </form>
+  </summary>
+
+  <div style="padding:16px 6px 6px 20px; border-left:2px solid var(--line); margin-top:12px;">
+    <details style="margin-bottom:14px;">
+      <summary style="cursor:pointer; font-size:13.5px; color:var(--accent); font-weight:600;">+ Add school to {{ college.code }}</summary>
+      <form method="POST" action="{{ url_for('admin.add_school') }}" style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+        <input type="hidden" name="college_id" value="{{ college.id }}">
+        <div class="field" style="flex:1; min-width:220px;"><label>School name</label><input type="text" name="name" placeholder="e.g. School of Computing and Informatics Technology" required></div>
+        <button type="submit" class="btn btn-sm btn-primary">Add</button>
+      </form>
+    </details>
+
+    {% for school in college.schools %}
+    <details style="margin-bottom:12px; padding:12px; border:1px solid var(--line); border-radius:10px;">
+      <summary style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+        <span>{{ school.name }}</span>
+        <form method="POST" action="{{ url_for('admin.delete_entity', entity='school', entity_id=school.id) }}" onsubmit="return confirm('Delete this school?');" style="display:inline;">
+          <button type="submit" class="btn btn-sm btn-danger" onclick="event.stopPropagation();">Delete</button>
+        </form>
+      </summary>
+
+      <div style="padding:12px 0 0 16px; border-left:2px solid var(--line); margin-top:10px;">
+        <details style="margin-bottom:10px;">
+          <summary style="cursor:pointer; font-size:13px; color:var(--accent); font-weight:600;">+ Add department</summary>
+          <form method="POST" action="{{ url_for('admin.add_department') }}" style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+            <input type="hidden" name="school_id" value="{{ school.id }}">
+            <div class="field" style="flex:1; min-width:200px;"><label>Department name</label><input type="text" name="name" placeholder="e.g. Department of Computer Science" required></div>
+            <button type="submit" class="btn btn-sm btn-primary">Add</button>
+          </form>
+        </details>
+
+        {% for dept in school.departments %}
+        <div style="margin-bottom:10px; padding:10px; background:var(--paper); border-radius:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:14px; font-weight:600;">{{ dept.name }}</span>
+            <form method="POST" action="{{ url_for('admin.delete_entity', entity='department', entity_id=dept.id) }}" onsubmit="return confirm('Delete this department?');">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </div>
+          <div style="margin-top:8px; padding-left:14px; border-left:2px solid var(--line);">
+            {% for prog in dept.programmes %}
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 0; font-size:13.5px;">
+              <span>{{ prog.name }} <span class="badge badge-neutral">{{ prog.code }}</span></span>
+              <form method="POST" action="{{ url_for('admin.delete_entity', entity='programme', entity_id=prog.id) }}" onsubmit="return confirm('Delete this programme?');">
+                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+              </form>
+            </div>
+            {% endfor %}
+            <details style="margin-top:6px;">
+              <summary style="cursor:pointer; font-size:12.5px; color:var(--accent); font-weight:600;">+ Add programme</summary>
+              <form method="POST" action="{{ url_for('admin.add_programme') }}" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+                <input type="hidden" name="department_id" value="{{ dept.id }}">
+                <div class="field" style="flex:1; min-width:180px;"><label>Programme name</label><input type="text" name="name" required></div>
+                <div class="field" style="width:100px;"><label>Code</label><input type="text" name="code" required></div>
+                <div class="field" style="width:130px;">
+                  <label>Level</label>
+                  <select name="level">
+                    <option>Diploma</option><option selected>Bachelors</option><option>Masters</option><option>PhD</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary">Add</button>
+              </form>
+            </details>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+</details>
+{% endfor %}
+{% endblock %}

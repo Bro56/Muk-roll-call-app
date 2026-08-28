@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Check-in Insights{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Check-in Insights</h1>
+    <p class="sub">Data for improving the app over time — not attendance records themselves.</p>
+  </div>
+</div>
+
+<div class="grid grid-3" style="margin-bottom:28px;">
+  <div class="card stat-card">
+    <span class="label">Avg. attempts to succeed</span>
+    <span class="value">{{ "%.1f"|format(avg_attempts) }}</span>
+  </div>
+  <div class="card stat-card">
+    <span class="label">Total check-in attempts logged</span>
+    <span class="value">{{ total_attempts }}</span>
+  </div>
+  <div class="card stat-card">
+    <span class="label">Rep/lecturer-assisted check-ins</span>
+    <span class="value">{{ total_rectified }}</span>
+  </div>
+</div>
+
+<h2 style="font-size:18px; margin-bottom:14px;">Why check-ins fail</h2>
+{% if reason_breakdown %}
+<div class="card" style="padding:0; overflow:hidden; margin-bottom:32px;">
+  <table class="roster">
+    <thead><tr><th>Reason</th><th>Count</th><th>Share of failures</th></tr></thead>
+    <tbody>
+      {% set labels = {
+        'gps_missing': 'Location unavailable',
+        'gps_out_of_range': 'Out of range',
+        'face_missing': 'Camera unavailable',
+        'face_no_match': "Face didn't match",
+        'face_error': 'Face capture issue',
+        'no_face_enrolled': 'No face enrolled',
+      } %}
+      {% for r in reason_breakdown %}
+      <tr>
+        <td>{{ labels.get(r.reason, r.reason) }}</td>
+        <td>{{ r.count }}</td>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="progress-bar" style="width:120px;"><div class="fill" style="width:{{ r.pct }}%; background:var(--absent);"></div></div>
+            <span style="font-size:13px;">{{ "%.0f"|format(r.pct) }}%</span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card empty-state" style="margin-bottom:32px;">
+  <p>No check-in attempts logged yet.</p>
+</div>
+{% endif %}
+
+<h2 style="font-size:18px; margin-bottom:14px;">Rep/lecturer-assisted check-in log</h2>
+<p style="font-size:13px; color:var(--ink-soft); margin-bottom:14px;">
+  Every fallback check-in, who approved it, and when — for auditing, not for penalizing students. This is an acknowledged, credible path, used when GPS or the camera genuinely fails.
+</p>
+{% if rectify_rows %}
+<div class="card" style="padding:0; overflow:hidden;">
+  <table class="roster">
+    <thead><tr><th>Student</th><th>Course</th><th>Approved by</th><th>Role</th><th>When</th></tr></thead>
+    <tbody>
+      {% for r in rectify_rows %}
+      <tr>
+        <td class="person-cell">
+          <div class="avatar">{{ r.student_name.split(' ')|map('first')|join('')|upper }}</div>
+          {{ r.student_name }}
+        </td>
+        <td style="font-family:var(--font-mono); font-size:13px;">{{ r.course_code }}</td>
+        <td>{{ r.rep_name }}</td>
+        <td><span class="badge badge-neutral">{{ r.rep_role }}</span></td>
+        <td style="font-size:13px; color:var(--ink-soft);">{{ r.used_at.strftime('%d %b %Y, %H:%M') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card empty-state">
+  <p>No rep-assisted check-ins yet.</p>
+</div>
+{% endif %}
+{% endblock %}

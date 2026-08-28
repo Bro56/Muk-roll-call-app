@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Lecturer Activation Codes{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Lecturer Activation Codes</h1>
+    <p class="sub">Generate, revoke, and manage 4-month activation codes for new lecturer accounts.</p>
+  </div>
+  <div class="head-actions">
+    <form method="POST" action="{{ url_for('admin.generate_lecturer_code') }}" style="margin:0;">
+      <button type="submit" class="btn btn-primary">+ Generate Code</button>
+    </form>
+  </div>
+</div>
+
+{% if codes %}
+<div class="card" style="padding:0; overflow:hidden;">
+  <table class="roster">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Created</th>
+        <th>Expires</th>
+        <th>Status</th>
+        <th>Used By</th>
+        <th style="width:120px;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in codes %}
+      <tr>
+        <td style="font-family:var(--font-mono); font-weight:600;">{{ c.code }}</td>
+        <td>{{ c.created_at.strftime('%d %b %Y') }}</td>
+        <td>{{ c.expires_at.strftime('%d %b %Y') }}</td>
+        <td>
+          {% if c.used_at %}
+            <span class="badge badge-present">Used</span>
+          {% elif not c.is_active %}
+            <span class="badge badge-absent">Revoked</span>
+          {% elif c.is_expired %}
+            <span class="badge badge-absent">Expired</span>
+          {% else %}
+            <span class="badge badge-late">Active</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if c.redeemer %}
+            {{ c.redeemer.full_name }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if not c.used_at and not c.is_expired %}
+            {% if c.is_active %}
+              <form method="POST" action="{{ url_for('admin.revoke_lecturer_code', code_id=c.id) }}" style="display:inline;">
+                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Revoke this code? It will immediately become unusable, even if someone has seen it.')">Revoke</button>
+              </form>
+            {% else %}
+              <form method="POST" action="{{ url_for('admin.restore_lecturer_code', code_id=c.id) }}" style="display:inline;">
+                <button type="submit" class="btn btn-sm btn-primary">Restore</button>
+              </form>
+            {% endif %}
+          {% else %}
+            <span style="font-size:12px; color:var(--ink-soft);">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card empty-state">
+  <p>No activation codes generated yet.</p>
+</div>
+{% endif %}
+{% endblock %}

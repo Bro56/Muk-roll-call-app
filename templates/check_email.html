@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<meta name="theme-color" content="#800000">
+<title>Check your email — Roll Call</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-hero">
+    <div class="auth-hero-inner">
+      <div class="brand-line">Makerere University</div>
+      <h2>We Build For The Future</h2>
+    </div>
+  </div>
+  <div class="auth-panel">
+    <div class="auth-card fade-in" style="text-align:center;">
+      <h1>Verify your email</h1>
+      <p class="sub" style="margin-bottom:24px;">We sent you a verification link. Please check your inbox (and spam folder) and click the link to activate your account.</p>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-block">Go to sign in</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

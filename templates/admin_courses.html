@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Courses{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Courses</h1>
+    <p class="sub">Add courses and assign lecturers to teach them.</p>
+  </div>
+</div>
+
+<details class="card" style="margin-bottom:24px;">
+  <summary style="cursor:pointer; font-weight:700;">+ Add a new course</summary>
+  <form method="POST" action="{{ url_for('admin.add_course') }}" style="margin-top:16px;">
+    <div class="field-row">
+      <div class="field"><label>Course code</label><input type="text" name="code" placeholder="e.g. CSC2102" required></div>
+      <div class="field"><label>Course name</label><input type="text" name="name" placeholder="e.g. Database Systems" required></div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Programme</label>
+        <select name="programme_id" required>
+          <option value="">Select programme…</option>
+          {% for p in programmes %}<option value="{{ p.id }}">{{ p.name }} ({{ p.code }})</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>Lecturer (optional)</label>
+        <select name="lecturer_id">
+          <option value="">Unassigned</option>
+          {% for l in lecturers %}<option value="{{ l.id }}">{{ l.full_name }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Year of study</label>
+        <select name="year_of_study">{% for y in [1,2,3,4,5] %}<option value="{{ y }}">Year {{ y }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>Semester</label>
+        <select name="semester"><option value="1">Semester 1</option><option value="2">Semester 2</option></select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Add course</button>
+  </form>
+</details>
+
+<div class="card" style="padding:0; overflow:hidden;">
+  <table class="roster">
+    <thead><tr><th>Code</th><th>Course</th><th>Programme</th><th>Yr/Sem</th><th>Lecturer</th></tr></thead>
+    <tbody>
+      {% for c in courses %}
+      <tr>
+        <td style="font-family:var(--font-mono); font-weight:700;">{{ c.code }}</td>
+        <td>{{ c.name }}</td>
+        <td style="font-size:13px; color:var(--ink-soft);">{{ c.programme.name }}</td>
+        <td>Y{{ c.year_of_study }}/S{{ c.semester }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin.assign_lecturer', course_id=c.id) }}" style="display:flex; gap:6px;">
+            <select name="lecturer_id" onchange="this.form.submit()" style="padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--paper); color:var(--ink); font-size:13px;">
+              <option value="">Unassigned</option>
+              {% for l in lecturers %}
+              <option value="{{ l.id }}" {{ 'selected' if c.lecturer_id == l.id }}>{{ l.full_name }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}System Settings | Makerere Roll Call{% endblock %}
+
+{% block content %}
+<div class="settings-container" style="max-width: 800px;">
+    <h2>System Settings</h2>
+    
+    <div style="background: var(--paper, #fff); border: 1px solid var(--sidebar-border); border-radius: 8px; padding: 1.5rem; margin-top: 1rem;">
+        <h4 style="margin-top: 0; color: #800000;">Academic Session Configuration</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <div>
+                <label style="display: block; font-size: 13px; margin-bottom: 4px;">Academic Year</label>
+                <input type="text" value="2025/2026" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--sidebar-border);">
+            </div>
+            <div>
+                <label style="display: block; font-size: 13px; margin-bottom: 4px;">Current Semester</label>
+                <select style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--sidebar-border);">
+                    <option selected>Semester I</option>
+                    <option>Semester II</option>
+                </select>
+            </div>
+        </div>
+
+        <h4 style="color: #800000;">Attendance & Biometric Security</h4>
+        <div style="margin-bottom: 1rem;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                <input type="checkbox" checked> Enforce Geolocation Verification radius (100 meters within lecture room)
+            </label>
+        </div>
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                <input type="checkbox" checked> Allow Class Reps to create temporary session roll call codes
+            </label>
+        </div>
+
+        <button type="button" style="background: #800000; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
+            Save Configuration
+        </button>
+    </div>
+</div>
+{% endblock %}
